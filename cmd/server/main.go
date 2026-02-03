@@ -142,6 +142,8 @@ func main() {
 	http.HandleFunc("/analyze", AuthMiddleware(handleAnalyze))
 	http.HandleFunc("/generator", AuthMiddleware(handleGenerator))
 	http.HandleFunc("/about", AuthMiddleware(handleAbout))
+	http.HandleFunc("/ai-tester", AuthMiddleware(handleAITester))
+	http.HandleFunc("/ai-tester/chat", AuthMiddleware(handleAIChat))
 	http.HandleFunc("/docs/toc", AuthMiddleware(handleDocsTOC))
 	http.HandleFunc("/docs/content", AuthMiddleware(handleDocsContent))
 	http.HandleFunc("/docs/download", AuthMiddleware(handleDocsDownload))
@@ -586,6 +588,41 @@ func handleGenerator(w http.ResponseWriter, r *http.Request) {
 func handleAbout(w http.ResponseWriter, r *http.Request) {
 	data := getBaseData(r, "About", "about")
 	renderTemplate(w, "about.html", data)
+}
+
+func handleAITester(w http.ResponseWriter, r *http.Request) {
+	data := getBaseData(r, "AI Tester", "ai_tester")
+	renderTemplate(w, "ai_chat.html", data)
+}
+
+func handleAIChat(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	prompt := r.FormValue("prompt")
+	if prompt == "" {
+		return
+	}
+
+	// 1. Render User Message snippet
+	userHtml := fmt.Sprintf(`<div class="message user">%s</div>`, template.HTMLEscapeString(prompt))
+
+	// 2. Call AI
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
+
+	response, err := aiClient.GenerateContent(ctx, prompt)
+	if err != nil {
+		response = fmt.Sprintf("Error: %v", err)
+	}
+
+	// 3. Render AI Response snippet
+	aiHtml := fmt.Sprintf(`<div class="message ai">%s</div>`, template.HTMLEscapeString(response))
+
+	// Return both
+	w.Write([]byte(userHtml + aiHtml))
 }
 
 func handleDocsTOC(w http.ResponseWriter, r *http.Request) {
