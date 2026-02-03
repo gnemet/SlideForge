@@ -1,5 +1,7 @@
-create one row height terminal window in fotter bar , left side. Show bakcground process output there.
-Missing som information in the footer bar. 
-Author, Build Date
-Add icons to the footer bar text.
-Look at the jiramntr project for the footer bar design.
+# Terminal & Footer Tasks
+
+- [x] Create a background process terminal in the footer bar.
+- [x] Integrate SSE-based logs visualization.
+- [x] Add Author and Build Date metadata to footer.
+- [x] Standardize on Font Awesome iconography in footer text.
+- [x] Align footer design with Jiramntr aesthetic.

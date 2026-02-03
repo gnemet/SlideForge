@@ -45,7 +45,7 @@ function updateSearchUI() {
     const btnIcon = document.querySelector('#mode-loop-btn i');
 
     if (labelSpan) labelSpan.innerText = mode.label;
-    if (btnIcon) btnIcon.className = 'ph ' + mode.icon;
+    if (btnIcon) btnIcon.className = 'fas ' + mode.icon;
 
     // Update Button Title
     const btn = document.getElementById('mode-loop-btn');

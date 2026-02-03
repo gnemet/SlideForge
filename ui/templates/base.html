@@ -4,112 +4,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SlideForge | AI-Powered PPTX Orchestrator</title>
+    <title>{{if .Title}}{{.Title}} | {{end}}SlideForge</title>
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
         rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/base.css">
     <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Scripts -->
     <script src="https://unpkg.com/htmx.org@2.0.1"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- Phospor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/static/images/favicon.png">
 </head>
 
 <body>
-    <div class="app-layout" style="display: flex; height: calc(100vh - 32px); overflow: hidden;">
-        <aside class="sidebar">
-            <div class="logo">
-                <i class="ph-bold ph-presentation-chart"></i>
-                <span>SlideForge</span>
-            </div>
-            <ul class="nav-links">
-                <li class="nav-item active" hx-get="/dashboard" hx-target="#content">
-                    <i class="ph ph-squares-four"></i>
-                    Dashboard
-                </li>
-                <li class="nav-item" hx-get="/templates" hx-target="#content">
-                    <i class="ph ph-file-pptx"></i>
-                    Templates
-                </li>
-                <li class="nav-item" hx-get="/generator" hx-target="#content">
-                    <i class="ph ph-magic-wand"></i>
-                    Generator
-                </li>
-                <li class="nav-item" hx-get="/archive" hx-target="#content">
-                    <i class="ph ph-archive"></i>
-                    Archive
-                </li>
-            </ul>
-            <div class="nav-item" style="margin-top: auto; border-top: 1px solid var(--border); padding-top: 1rem;">
-                <i class="ph ph-gear"></i>
-                Settings
-            </div>
-        </aside>
+    {{template "sidebar" .}}
 
-        <main class="main-content" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-            <header>
-                <div class="header-left">
-                    <h1 id="page-title">{{.Title}}</h1>
-                    <p class="text-muted">Welcome back to SlideForge</p>
-                </div>
-                <div class="user-profile">
-                    <span id="current-time" style="font-weight: 500;"></span>
-                    <div class="avatar">{{slice .UserName 0 1}}</div>
-                </div>
-            </header>
+    <div class="app-container">
+        {{template "header" .}}
 
-            <section id="content" class="animate-fade-in" style="flex: 1; overflow-y: auto; padding: 2rem;">
-                <!-- Content will be swapped by HTMX -->
-                {{ template "content" . }}
-            </section>
+        <main class="app-layout">
+            <div id="content-area">
+                {{template "content" .}}
+            </div>
         </main>
+
+        {{template "footer" .}}
     </div>
 
-    {{ template "footer" . }}
-
+    <!-- SSE Status Listener -->
     <script>
-        // Log Stream
-        const evtSource = new EventSource("/events/logs");
+        const evtSource = new EventSource("/events/status");
         evtSource.onmessage = function (event) {
+            const data = JSON.parse(event.data);
             const terminal = document.getElementById('log-terminal');
             if (terminal) {
-                terminal.style.display = 'flex';
-                terminal.textContent = event.data;
-                terminal.style.color = 'var(--text-color)';
-                // animate flush
-                terminal.animate([
-                    { opacity: 0.5 },
-                    { opacity: 1 }
-                ], { duration: 300 });
+                if (data.is_processing) {
+                    terminal.classList.add('visible');
+                    terminal.textContent = data.last_log || "Processing...";
+                } else {
+                    terminal.classList.remove('visible');
+                }
             }
         };
     </script>
 
     <script>
         $(document).ready(function () {
-            function updateTime() {
-                const now = new Date();
-                $('#current-time').text(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-            }
-            updateTime();
-            setInterval(updateTime, 60000);
-
-            // Handle Nav Active State
-            $('.nav-item').on('click', function () {
-                $('.nav-item').removeClass('active');
-                $(this).addClass('active');
-                $('#page-title').text($(this).text().trim());
+            // HTMX Loading Indicator logic
+            document.body.addEventListener('htmx:beforeRequest', function () {
+                $('#content-area').css('opacity', '0.6');
             });
-        });
-
-        // HTMX Loading Indicator
-        document.body.addEventListener('htmx:beforeRequest', function () {
-            $('#content').css('opacity', '0.5');
-        });
-        document.body.addEventListener('htmx:afterRequest', function () {
-            $('#content').css('opacity', '1');
+            document.body.addEventListener('htmx:afterRequest', function () {
+                $('#content-area').css('opacity', '1');
+            });
         });
     </script>
 </body>

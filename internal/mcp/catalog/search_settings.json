@@ -1,7 +1,9 @@
 {
     "version": "1.2",
     "title": "Search Settings",
-    "icon": "fa-cog",
+    "icon": "sliders-h",
+    "type": "System",
+    "css_class": "tile-orange",
     "datagrid": {
         "defaults": {
             "page_size": [
@@ -13,7 +15,7 @@
         "columns": {
             "key": {
                 "visible": true,
-                "icon": "ph-key",
+                "icon": "key",
                 "width": 200
             },
             "value": {

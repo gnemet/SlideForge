@@ -1,7 +1,9 @@
 {
     "version": "1.2",
     "title": "Presentations",
-    "icon": "fa-file-powerpoint",
+    "icon": "file-powerpoint",
+    "type": "Infrastructure",
+    "css_class": "tile-forest",
     "datagrid": {
         "defaults": {
             "page_size": [
@@ -13,7 +15,7 @@
         "columns": {
             "id": {
                 "visible": true,
-                "icon": "ph-hash",
+                "icon": "hash",
                 "width": 80
             },
             "filename": {

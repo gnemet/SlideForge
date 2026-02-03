@@ -99,6 +99,12 @@ func main() {
 		"stripExt": func(filename string) string {
 			return strings.TrimSuffix(filename, filepath.Ext(filename))
 		},
+		"mod": func(a, b int) int {
+			return a % b
+		},
+		"contains": func(s, substr string) bool {
+			return strings.Contains(s, substr)
+		},
 	}
 	// Merge Datagrid Template Funcs (renderRow, etc.)
 	for k, v := range datagrid.TemplateFuncs() {
@@ -672,7 +678,7 @@ func getBaseData(r *http.Request, title string, activeNav string) map[string]int
 
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if cfg != nil && !cfg.Application.Authentication {
+		if cfg != nil && (cfg.Application.AuthType == "none" || !cfg.Application.Authentication) {
 			next(w, r)
 			return
 		}

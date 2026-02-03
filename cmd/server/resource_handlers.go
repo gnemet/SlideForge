@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"sort"
 
 	"github.com/gnemet/SlideForge/internal/i18n"
 	"github.com/gnemet/SlideForge/internal/mcp"
@@ -40,14 +41,14 @@ func handleResourcePage(w http.ResponseWriter, r *http.Request) {
 
 	// 3. Prepare Data
 	icon := dgHandler.Catalog.Icon
-	if icon == "" {
-		icon = "ph-database"
-	}
-
-	// Ensure icon has ph- prefix if missing (legacy support)
-	if len(icon) > 3 && icon[:3] != "ph-" && icon[:3] != "fa-" {
-		// Assume it might be just "presentation", prepend ph-
-		// But let's trust the catalog first
+	// Ensure icon has fa- prefix if missing (legacy support)
+	if len(icon) > 0 {
+		isFa := len(icon) >= 3 && icon[:3] == "fa-"
+		if !isFa {
+			icon = "fa-" + icon
+		}
+	} else {
+		icon = "fa-database"
 	}
 
 	data := getBaseData(r, dgHandler.Catalog.Title, "tables")
@@ -59,6 +60,15 @@ func handleResourcePage(w http.ResponseWriter, r *http.Request) {
 	data["UIColumns"] = dgHandler.Columns
 	data["Icon"] = icon
 	data["Title"] = dgHandler.Catalog.Title
+	// Strip schema if present (e.g. "slideforge.collected_slides" -> "collected_slides")
+	tableName := dgHandler.TableName
+	for i := len(tableName) - 1; i >= 0; i-- {
+		if tableName[i] == '.' {
+			tableName = tableName[i+1:]
+			break
+		}
+	}
+	data["TableName"] = tableName
 	data["Limit"] = dgHandler.Config.Defaults.PageSize
 	if data["Limit"] == 0 {
 		data["Limit"] = 10
@@ -140,13 +150,22 @@ func getCatalogItems() []map[string]string {
 		}
 		var manifest datagrid.Catalog
 		if err := json.Unmarshal([]byte(meta), &manifest); err == nil {
+			icon := manifest.Icon
+			if icon == "" {
+				icon = ""
+			}
 			items = append(items, map[string]string{
-				"Code":  code,
-				"Title": manifest.Title,
-				"Icon":  manifest.Icon,
+				"Code":     code,
+				"Title":    manifest.Title,
+				"Icon":     icon,
+				"Type":     manifest.Type,
+				"CSSClass": manifest.CSSClass,
 			})
 		}
 	}
+	sort.Slice(items, func(i, j int) bool {
+		return items[i]["Type"] < items[j]["Type"]
+	})
 	return items
 }
 

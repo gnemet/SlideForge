@@ -29,6 +29,7 @@ type ApplicationConfig struct {
 	ParserRulesDocPath string        `mapstructure:"parser_rules_doc_path"`
 	Storage            StorageConfig `mapstructure:"storage"`
 	Authentication     bool          `mapstructure:"authentication"`
+	AuthType           string        `mapstructure:"auth_type"`
 }
 
 type StorageConfig struct {
@@ -123,6 +124,7 @@ func LoadConfig() (*Config, error) {
 		{"database.options", "PG_OPTIONS"},
 		{"application.port", "PORT"},
 		{"application.authentication", "AUTH_ENABLED"},
+		{"application.auth_type", "AUTH_TYPE"},
 		{"ai.active_provider", "AI_PROVIDER"},
 
 		// Storage

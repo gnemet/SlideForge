@@ -78,5 +78,9 @@ echo "Building SlideForge..."
 go build -o bin/slideforge ./cmd/server
 
 APP_PORT=${PORT:-8088}
+
+echo "Killing process on port $APP_PORT..."
+fuser -k $APP_PORT/tcp 2>/dev/null || true
+
 echo "Starting SlideForge on http://localhost:$APP_PORT"
 ./bin/slideforge

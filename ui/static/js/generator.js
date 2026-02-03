@@ -2,6 +2,18 @@ document.addEventListener('DOMContentLoaded', function () {
     initDragAndDrop();
     initSearch();
     updateSlideCounts();
+
+    // Global Cleanup: Ensure "menu no buttons" rule is applied to any existing items
+    document.querySelectorAll('#collection-target .slide-item button').forEach(btn => btn.remove());
+
+    // Re-bind double-click for items already in collection (if any)
+    document.querySelectorAll('#collection-target .slide-item').forEach(item => {
+        item.ondblclick = (e) => {
+            e.stopPropagation();
+            item.remove();
+            checkEmpty();
+        };
+    });
 });
 
 let currentDragItems = [];
@@ -67,33 +79,27 @@ function initDragAndDrop() {
                 // The currentDragItems array is already in DOM order (from querySelectorAll)
 
                 currentDragItems.forEach(sourceItem => {
-                    // Check if this source item corresponds to the dropped item
-                    // (Sortable cloned one item, we need to identify which one it was to avoid duplication)
                     const sourcePath = sourceItem.getAttribute('data-path');
                     const droppedPath = droppedItem.getAttribute('data-path');
 
                     if (sourcePath === droppedPath) {
-                        // This is the item Sortable already added. Just process it.
-                        processAddedItem(droppedItem);
-                        refNode = droppedItem; // advancing reference
+                        processAddedItem(droppedItem, sourceItem);
+                        refNode = droppedItem;
                     } else {
-                        // Clone and insert
                         const clone = sourceItem.cloneNode(true);
-
-                        // Insert after the last added item to maintain sequence
                         if (refNode.nextSibling) {
                             target.insertBefore(clone, refNode.nextSibling);
                         } else {
                             target.appendChild(clone);
                         }
-
-                        processAddedItem(clone);
-                        refNode = clone; // advance reference
+                        processAddedItem(clone, sourceItem);
+                        refNode = clone;
                     }
                 });
             } else {
-                // Single item case
-                processAddedItem(droppedItem);
+                // Single item - identify its source
+                const sourceItem = currentDragItems[0];
+                processAddedItem(droppedItem, sourceItem);
             }
         }
     });
@@ -105,40 +111,68 @@ function initDragAndDrop() {
         if (pptxId) {
             e.preventDefault();
             const sourceContainer = document.getElementById('slides-' + pptxId);
+            const sourceNode = sourceContainer.closest('.tree-node');
             const slides = sourceContainer.querySelectorAll('.slide-item');
             slides.forEach(slide => {
                 const clone = slide.cloneNode(true);
                 target.appendChild(clone);
-                processAddedItem(clone);
+                processAddedItem(clone, slide);
             });
             checkEmpty();
         }
     });
 }
 
-function processAddedItem(item) {
+function processAddedItem(item, sourceItem) {
     const target = document.getElementById('collection-target');
     const empty = target.querySelector('.collection-empty');
     if (empty) empty.remove();
 
     item.style.cursor = 'grab';
-    item.classList.remove('selected'); // Don't carry over selection to target
+    item.classList.remove('selected');
 
-    const path = item.getAttribute('data-path');
-    const info = item.querySelector('.slide-info').innerText;
-    item.onclick = (e) => handleSlideClick(item, e);
+    // STRICT: Remove ALL buttons from the row. No action buttons allowed on rows!
+    item.querySelectorAll('button').forEach(btn => btn.remove());
 
-    if (!item.querySelector('.remove-slide')) {
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'btn btn-muted btn-sm ml-auto remove-slide';
-        removeBtn.innerHTML = '<i class="fas fa-trash"></i>';
-        removeBtn.onclick = (e) => {
-            e.stopPropagation();
-            item.remove();
-            checkEmpty();
-        };
-        item.appendChild(removeBtn);
+    // Resolve Compound Name: [Presentation] / [Slide Title]
+    const slideInfoSpan = item.querySelector('.slide-info span');
+    if (slideInfoSpan) {
+        let pptxName = "";
+
+        // Strategy 1: Use provided sourceItem
+        if (sourceItem) {
+            const container = sourceItem.closest('.slides-container');
+            const pptNode = container ? container.previousElementSibling : null;
+            if (pptNode && pptNode.classList.contains('ppt-node')) {
+                pptxName = pptNode.querySelector('span').innerText.trim();
+            }
+        }
+
+        // Strategy 2: If no sourceItem, try to resolve from current element tree
+        if (!pptxName) {
+            const container = item.closest('.slides-container');
+            const pptNode = container ? container.previousElementSibling : null;
+            if (pptNode && pptNode.classList.contains('ppt-node')) {
+                pptxName = pptNode.querySelector('span').innerText.trim();
+            }
+        }
+
+        if (pptxName) {
+            const slideName = slideInfoSpan.innerText.trim();
+            // Only prepend if not already in compound format
+            if (!slideName.includes(' / ')) {
+                slideInfoSpan.innerText = `${pptxName} / ${slideName}`;
+            }
+        }
     }
+
+    // Interactions
+    item.onclick = (e) => handleSlideClick(item, e);
+    item.ondblclick = (e) => {
+        e.stopPropagation();
+        item.remove();
+        checkEmpty();
+    };
 }
 
 function initSearch() {
@@ -153,6 +187,7 @@ function initSearch() {
             const matches = filename.includes(term) || tags.includes(term);
             node.style.display = matches ? 'block' : 'none';
         });
+        updateSlideCounts();
     });
 }
 
@@ -163,6 +198,12 @@ function toggleNode(el, e) {
 
 function handleSlideClick(item, e) {
     e.stopPropagation();
+
+    // Alt + Shift + Click: Show JSON Data
+    if (e.altKey && e.shiftKey) {
+        showSlideJson(item);
+        return;
+    }
 
     // Alt + Click: Preview Slide
     if (e.altKey) {
@@ -184,19 +225,58 @@ function handleSlideClick(item, e) {
         return;
     }
 
-    // Normal Click: Exclusive Select (Standard File Explorer behavior)
+    // Normal Click: Exclusive Select
     document.querySelectorAll('.slide-item.selected').forEach(el => {
         if (el !== item) el.classList.remove('selected');
     });
     item.classList.add('selected');
+
+    // Handle Double Click for copy to collection (if in source)
+    item.ondblclick = (e) => {
+        if (item.parentElement.classList.contains('slides-container')) {
+            e.stopPropagation();
+            const cloned = item.cloneNode(true);
+            document.getElementById('collection-target').appendChild(cloned);
+            processAddedItem(cloned, item);
+            checkEmpty();
+        }
+    };
+}
+
+function showSlideJson(item) {
+    const data = {
+        id: item.getAttribute('data-id'),
+        path: item.getAttribute('data-path'),
+        summary: item.getAttribute('data-summary'),
+        content: item.getAttribute('data-content')
+    };
+
+    const modal = document.getElementById('meta-modal');
+    const backdrop = document.getElementById('meta-backdrop');
+    const rawBox = document.getElementById('meta-raw');
+
+    document.getElementById('meta-summary').innerText = item.querySelector('.slide-info').innerText;
+
+    rawBox.innerHTML = `<div class="json-viewer">${syntaxHighlightJSON(data)}</div>`;
+    rawBox.style.maxHeight = 'none'; // Allow resizable container to control height
+
+    modal.style.display = 'block';
+    backdrop.style.display = 'block';
+
+    setTimeout(() => {
+        modal.classList.add('active');
+        backdrop.style.opacity = '1';
+    }, 10);
 }
 
 function showMeta(item) {
     const summary = item.getAttribute('data-summary') || "No summary available.";
     const raw = item.getAttribute('data-content') || "No raw content extracted.";
 
+    const rawBox = document.getElementById('meta-raw');
     document.getElementById('meta-summary').innerText = summary;
-    document.getElementById('meta-raw').innerText = raw;
+    rawBox.innerText = raw;
+    rawBox.style.maxHeight = '200px'; // Limit height for text metadata
 
     const modal = document.getElementById('meta-modal');
     const backdrop = document.getElementById('meta-backdrop');
@@ -220,7 +300,70 @@ function closeMeta() {
     setTimeout(() => {
         modal.style.display = 'none';
         backdrop.style.display = 'none';
+        // Reset resizable/draggable overrides
+        modal.style.left = '';
+        modal.style.top = '';
+        modal.style.transform = '';
+        modal.style.margin = '';
+        modal.style.width = '500px';
+        modal.style.height = '400px';
     }, 300);
+}
+// JSON Syntax Highlighting
+function syntaxHighlightJSON(json) {
+    if (typeof json !== 'string') {
+        json = JSON.stringify(json, undefined, 2);
+    }
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        var cls = 'json-number';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = 'json-key';
+            } else {
+                cls = 'json-string';
+            }
+        } else if (/true|false/.test(match)) {
+            cls = 'json-boolean';
+        } else if (/null/.test(match)) {
+            cls = 'json-null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
+}
+
+// Modal Drag Logic
+let activeModal = null;
+let dragOffset = { x: 0, y: 0 };
+
+function initModalDrag(e, modalId) {
+    activeModal = document.getElementById(modalId);
+    if (!activeModal) return;
+
+    // Switch to absolute positioning if we start dragging
+    const rect = activeModal.getBoundingClientRect();
+    activeModal.style.transform = 'none';
+    activeModal.style.left = rect.left + 'px';
+    activeModal.style.top = rect.top + 'px';
+    activeModal.style.margin = '0';
+
+    dragOffset.x = e.clientX - rect.left;
+    dragOffset.y = e.clientY - rect.top;
+
+    document.addEventListener('mousemove', handleModalDrag);
+    document.addEventListener('mouseup', stopModalDrag);
+}
+
+function handleModalDrag(e) {
+    if (!activeModal) return;
+    activeModal.style.left = (e.clientX - dragOffset.x) + 'px';
+    activeModal.style.top = (e.clientY - dragOffset.y) + 'px';
+}
+
+function stopModalDrag() {
+    document.removeEventListener('mousemove', handleModalDrag);
+    document.removeEventListener('mouseup', stopModalDrag);
+    activeModal = null;
 }
 
 function previewSlide(path, title) {
@@ -252,6 +395,11 @@ function closePreview() {
     setTimeout(() => {
         modal.style.display = 'none';
         backdrop.style.display = 'none';
+        // Reset resizable/draggable overrides
+        modal.style.left = '';
+        modal.style.top = '';
+        modal.style.transform = '';
+        modal.style.margin = '';
     }, 300);
 }
 
@@ -281,8 +429,26 @@ function checkEmpty() {
 }
 
 function updateSlideCounts() {
-    const count = document.querySelectorAll('.slide-item').length;
-    // Note: this counts all in source, might want to be more specific
+    const sourceTree = document.getElementById('source-tree');
+    if (!sourceTree) return;
+
+    // Count slides in segments that are currently visible (matching the filter)
+    const visibleSlides = Array.from(sourceTree.querySelectorAll('.slide-item')).filter(s => {
+        const node = s.closest('.tree-node');
+        return node && node.style.display !== 'none';
+    });
+
+    // Count distinct PPTX files that are currently visible
+    const visiblePPTs = Array.from(sourceTree.querySelectorAll('.tree-node')).filter(node => {
+        return node.style.display !== 'none';
+    });
+
+    const countBadge = document.getElementById('source-count');
+    if (countBadge) {
+        const sSuffix = countBadge.getAttribute('data-suffix') || 'slides';
+        const pSuffix = countBadge.getAttribute('data-pptx-suffix') || 'PPTX';
+        countBadge.innerText = `${visibleSlides.length} ${sSuffix} (${visiblePPTs.length} ${pSuffix})`;
+    }
 }
 
 function generateFromCollection() {
@@ -315,7 +481,7 @@ document.addEventListener('contextmenu', function (e) {
     const slideItem = e.target.closest('.slide-item');
     if (slideItem) {
         e.preventDefault();
-        showContextMenu(slideItem, e.pageX, e.pageY);
+        showContextMenu(slideItem, e.clientX, e.clientY);
     } else {
         closeContextMenu();
     }
@@ -331,12 +497,24 @@ function showContextMenu(item, x, y) {
     contextTargetItem = item;
     const menu = document.getElementById('context-menu');
 
+    // Context-aware menu items
+    const isSource = item.parentElement.classList.contains('slides-container');
+    const addAction = menu.querySelector('[onclick="handleContextAction(\'add\')"]');
+    const removeAction = menu.querySelector('[onclick="handleContextAction(\'remove\')"]');
+
+    if (addAction) addAction.style.display = isSource ? 'flex' : 'none';
+    if (removeAction) removeAction.style.display = isSource ? 'none' : 'flex';
+
+    menu.style.position = 'fixed';
+
     // Adjust position to prevent overflow
     const winWidth = window.innerWidth;
     const winHeight = window.innerHeight;
+    const menuWidth = 200;
+    const menuHeight = menu.offsetHeight || 200;
 
-    if (x + 200 > winWidth) x = winWidth - 210;
-    if (y + 150 > winHeight) y = winHeight - 160;
+    if (x + menuWidth > winWidth) x = winWidth - menuWidth - 10;
+    if (y + menuHeight > winHeight) y = winHeight - menuHeight - 10;
 
     menu.style.left = x + 'px';
     menu.style.top = y + 'px';
@@ -345,7 +523,7 @@ function showContextMenu(item, x, y) {
 
 function closeContextMenu() {
     const menu = document.getElementById('context-menu');
-    menu.classList.remove('active');
+    if (menu) menu.classList.remove('active');
     contextTargetItem = null;
 }
 
@@ -361,8 +539,10 @@ function handleContextAction(action) {
     } else if (action === 'add') {
         const cloned = contextTargetItem.cloneNode(true);
         document.getElementById('collection-target').appendChild(cloned);
-        processAddedItem(cloned);
+        processAddedItem(cloned, contextTargetItem);
         checkEmpty();
+    } else if (action === 'json') {
+        showSlideJson(contextTargetItem);
     } else if (action === 'remove') {
         if (contextTargetItem.parentElement.id === 'collection-target') {
             contextTargetItem.remove();

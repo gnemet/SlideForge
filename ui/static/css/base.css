@@ -17,6 +17,7 @@
     --bg-hover: rgba(0, 0, 0, 0.05);
     --bg-header: #ffffff;
     --bg-sidebar: #f8fafc;
+    --accent-rgb: 108, 92, 231;
 }
 
 [data-theme="dark"] {
@@ -33,6 +34,7 @@
     --bg-hover: rgba(255, 255, 255, 0.1);
     --bg-header: #1e293b;
     --bg-sidebar: #0f172a;
+    --accent-rgb: 162, 155, 254;
 }
 
 * {
@@ -349,4 +351,13 @@ footer.app-footer {
 
 [data-theme="dark"] .dg-breadcrumb-bar {
     background: var(--bg-secondary) !important;
+}
+
+/* Utilities */
+.hidden {
+    display: none !important;
+}
+
+.visible {
+    display: flex !important;
 }
