@@ -1,0 +1,45 @@
+{
+    "version": "1.2",
+    "title": "Search Settings",
+    "icon": "fa-cog",
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25
+            ],
+            "sort_column": "key",
+            "sort_direction": "asc"
+        },
+        "columns": {
+            "key": {
+                "visible": true,
+                "icon": "ph-key",
+                "width": 200
+            },
+            "value": {
+                "visible": true,
+                "labels": {
+                    "en": "Value"
+                }
+            }
+        }
+    },
+    "objects": [
+        {
+            "name": "slideforge.search_settings",
+            "type": "table",
+            "description": "Application search configuration.",
+            "columns": [
+                {
+                    "name": "key",
+                    "type": "TEXT",
+                    "primary_key": true
+                },
+                {
+                    "name": "value",
+                    "type": "TEXT"
+                }
+            ]
+        }
+    ]
+}

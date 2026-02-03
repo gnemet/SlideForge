@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -90,17 +91,24 @@ func main() {
 
 	i18n.Init()
 
-	// Templates - Parse layout only globally
-	tmpl = template.Must(template.New("").Funcs(template.FuncMap{
+	// Templates - Parse layout and datagrid templates
+	funcMap := template.FuncMap{
 		"T": func(lang, key string) string {
 			return i18n.T(lang, key)
 		},
 		"stripExt": func(filename string) string {
 			return strings.TrimSuffix(filename, filepath.Ext(filename))
 		},
-	}).ParseGlob("ui/templates/layout/*.html"))
-	// Also parse partials globally so they are available to all templates that might use them
+	}
+	// Merge Datagrid Template Funcs (renderRow, etc.)
+	for k, v := range datagrid.TemplateFuncs() {
+		funcMap[k] = v
+	}
+
+	tmpl = template.Must(template.New("").Funcs(funcMap).ParseGlob("ui/templates/layout/*.html"))
 	tmpl = template.Must(tmpl.ParseGlob("ui/templates/partials/*.html"))
+	// Automagically include all datagrid library templates
+	tmpl = template.Must(tmpl.ParseFS(datagrid.UIAssets, "ui/templates/partials/datagrid/*.html"))
 
 	// Datagrid Handler for PPTX Files
 	dgHandler := datagrid.NewHandler(sqlDB, "pptx_files", []datagrid.UIColumn{
@@ -109,14 +117,20 @@ func main() {
 		{Field: "is_template", Label: "Template", Visible: true, Type: "boolean"},
 	}, datagrid.DatagridConfig{})
 
-	// Routes
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("ui/static"))))
 	http.Handle("/thumbnails/", http.StripPrefix("/thumbnails/", http.FileServer(http.Dir(cfg.Application.Storage.Thumbnails))))
+
+	// Datagrid library assets (Embedded in library)
+	sub, _ := fs.Sub(datagrid.UIAssets, "ui/static")
+	http.Handle("/ui/static/", http.StripPrefix("/ui/static/", http.FileServer(http.FS(sub))))
 
 	http.HandleFunc("/", handleIndex)
 	http.HandleFunc("/dashboard", AuthMiddleware(handleDashboard))
 	http.HandleFunc("/upload", AuthMiddleware(handleUpload))
 	http.HandleFunc("/templates", AuthMiddleware(dgHandler.ServeHTTP))
+	http.HandleFunc("/meta", AuthMiddleware(handleMetaPage))
+	http.HandleFunc("/resource", AuthMiddleware(handleResourcePage))
+	http.HandleFunc("/resource/list", AuthMiddleware(handleResourceList))
 	http.HandleFunc("/selection", AuthMiddleware(handleSelection))
 	http.HandleFunc("/collect", AuthMiddleware(handleCollect))
 	http.HandleFunc("/analyze", AuthMiddleware(handleAnalyze))

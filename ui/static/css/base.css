@@ -115,6 +115,7 @@ body {
 .app-layout {
     display: flex;
     flex: 1;
+    margin-top: 60px;
 }
 
 /* Sidebar */
@@ -168,8 +169,33 @@ body {
 
 .main-content {
     flex: 1;
-    padding: 32px;
+    padding: 20px;
     overflow-y: auto;
+    position: relative;
+    z-index: 1;
+}
+
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header-left h1 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.header-left p {
+    margin: 4px 0 0 0;
+    font-size: 0.9rem;
 }
 
 /* Notification & Toast */
@@ -297,4 +323,30 @@ footer.app-footer {
         border-radius: 4px;
         box-shadow: var(--shadow);
     }
+}
+
+/* Datagrid Overrides for Theme Consistency */
+[data-theme="dark"] .datagrid-toolbar,
+[data-theme="dark"] .resource-toolbar {
+    background: var(--bg-secondary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.search-wrapper {
+    height: 32px !important;
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .search-wrapper {
+    background: var(--bg-primary) !important;
+    border-color: #404b5c !important;
+    color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .search-wrapper input {
+    color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .dg-breadcrumb-bar {
+    background: var(--bg-secondary) !important;
 }

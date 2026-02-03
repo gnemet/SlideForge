@@ -1,7 +1,7 @@
 {
     "version": "1.2",
     "title": "Slides",
-    "icon": "ph-slideshow",
+    "icon": "fa-images",
     "datagrid": {
         "defaults": {
             "page_size": [
@@ -36,6 +36,12 @@
                     "en": "Title"
                 }
             },
+            "content": {
+                "visible": true,
+                "labels": {
+                    "en": "Content"
+                }
+            },
             "created_at": {
                 "visible": true,
                 "labels": {
@@ -66,6 +72,10 @@
                 },
                 {
                     "name": "title",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "content",
                     "type": "TEXT"
                 },
                 {

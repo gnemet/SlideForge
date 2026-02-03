@@ -50,7 +50,7 @@ func handleResourcePage(w http.ResponseWriter, r *http.Request) {
 		// But let's trust the catalog first
 	}
 
-	data := getBaseData(r, dgHandler.Catalog.Title, resourceCode)
+	data := getBaseData(r, dgHandler.Catalog.Title, "tables")
 
 	// Add Datagrid specific data
 	data["ResourceCode"] = resourceCode
@@ -58,10 +58,12 @@ func handleResourcePage(w http.ResponseWriter, r *http.Request) {
 	data["ListEndpoint"] = "/resource/list?code=" + resourceCode
 	data["UIColumns"] = dgHandler.Columns
 	data["Icon"] = icon
-	data["Description"] = ""
-	if len(dgHandler.Catalog.Objects) > 0 {
-		// Description not available in ObjectDef struct
+	data["Title"] = dgHandler.Catalog.Title
+	data["Limit"] = dgHandler.Config.Defaults.PageSize
+	if data["Limit"] == 0 {
+		data["Limit"] = 10
 	}
+	data["Offset"] = 0
 
 	renderTemplate(w, "resource.html", data)
 }
@@ -104,16 +106,12 @@ func handleResourceList(w http.ResponseWriter, r *http.Request) {
 	// 4. Render Partial (from Datagrid Embedded Assets)
 	funcMap := template.FuncMap{
 		"T": func(key string) string { return i18n.T(lang, key) },
-		// Add other funcs if needed, but datagrid.TemplateFuncs() is redundant if we define our own map?
-		// Better to use datagrid.TemplateFuncs() and merge.
 	}
-	// Merge datagrid funcs
+	// Merge global funcs
 	for k, v := range datagrid.TemplateFuncs() {
 		funcMap[k] = v
 	}
 
-	// Parse local template if we want to override, OR use embedded one.
-	// For simplicity, we use the embedded one.
 	tmpl, err := template.New("table.html").Funcs(funcMap).ParseFS(datagrid.UIAssets, "ui/templates/partials/datagrid/table.html")
 	if err != nil {
 		log.Printf("Error parsing embedded template: %v", err)
@@ -126,7 +124,7 @@ func handleResourceList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Helper: API to get all catalogs for the Sidebar
+// Helper: getCatalogItems returns metadata for all registered catalogs
 func getCatalogItems() []map[string]string {
 	provider := mcp.NewCatalogProvider()
 	codes, err := provider.GetAllCatalogs()
@@ -150,4 +148,13 @@ func getCatalogItems() []map[string]string {
 		}
 	}
 	return items
+}
+
+// MetaPageHandler renders the list of all tables/catalogs
+func handleMetaPage(w http.ResponseWriter, r *http.Request) {
+	items := getCatalogItems()
+	data := getBaseData(r, "Table Management", "tables")
+	data["Catalogs"] = items
+
+	renderTemplate(w, "meta.html", data)
 }

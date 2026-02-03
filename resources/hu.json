@@ -25,5 +25,8 @@
     "search_mode_similarity": "Hasonlóság",
     "search_mode_similarity_title": "Hasonló tartalmú diák keresése",
     "search_mode_word_similarity": "Szó Hasonlóság",
-    "search_mode_word_similarity_title": "Hasonló szavakat tartalmazó diák keresése"
+    "search_mode_word_similarity_title": "Hasonló szavakat tartalmazó diák keresése",
+    "tables": "Táblák",
+    "table": "Tábla",
+    "table_management": "Tábla Kezelés"
 }
