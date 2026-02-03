@@ -54,6 +54,8 @@ func main() {
 	http.HandleFunc("/dashboard", handleDashboard)
 	http.HandleFunc("/upload", handleUpload)
 	http.HandleFunc("/templates", dgHandler.ServeHTTP)
+	http.HandleFunc("/selection", handleSelection)
+	http.HandleFunc("/collect", handleCollect)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -114,4 +116,18 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 
 	// Return dashboard partial
 	handleDashboard(w, r)
+}
+
+func handleSelection(w http.ResponseWriter, r *http.Request) {
+	// For now, mock slides
+	slides := []map[string]interface{}{
+		{"number": 1, "png_path": "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=500"},
+		{"number": 2, "png_path": "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=500"},
+	}
+	tmpl.ExecuteTemplate(w, "selection.html", map[string]interface{}{"slides": slides})
+}
+
+func handleCollect(w http.ResponseWriter, r *http.Request) {
+	// Logic to save selected slides to database
+	fmt.Fprintf(w, "Successfully collected slides!")
 }

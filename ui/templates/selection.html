@@ -1,0 +1,49 @@
+<h3>Select Slides for Collection</h3>
+<div class="pptx-grid" id="slide-selection-grid">
+    <!-- Slides will be loaded here -->
+    {% for slide in slides %}
+    <div class="pptx-card slide-card" onclick="$(this).toggleClass('selected')">
+        <div class="thumbnail">
+            <img src="{{slide.png_path}}" alt="Slide {{slide.number}}">
+            <div class="selection-indicator">
+                <i class="ph ph-check-circle"></i>
+            </div>
+        </div>
+        <div class="card-info">
+            <div class="card-title">Slide {{slide.number}}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+    .slide-card {
+        cursor: pointer;
+        position: relative;
+    }
+
+    .slide-card.selected {
+        border-color: var(--primary);
+        background: rgba(99, 102, 241, 0.1);
+    }
+
+    .selection-indicator {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 1.5rem;
+        color: var(--primary);
+        display: none;
+    }
+
+    .slide-card.selected .selection-indicator {
+        display: block;
+    }
+</style>
+
+<div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+    <button class="btn" style="background: var(--card-bg);">Cancel</button>
+    <button class="btn btn-primary" hx-post="/collect" hx-include=".slide-card.selected">
+        <i class="ph ph-plus"></i> Add to Collection
+    </button>
+</div>
