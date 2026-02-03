@@ -1,0 +1,6 @@
+bin/
+data/
+uploads/
+thumbnails/
+.env
+*.log

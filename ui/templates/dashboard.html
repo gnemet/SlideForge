@@ -1,0 +1,92 @@
+<div class="stats-grid">
+    <div class="stat-card">
+        <i class="ph ph-files text-muted"></i>
+        <div class="stat-value">24</div>
+        <div class="stat-label">Total PPTX Files</div>
+    </div>
+    <div class="stat-card">
+        <i class="ph ph-layout text-muted"></i>
+        <div class="stat-value">12</div>
+        <div class="stat-label">Templates Ready</div>
+    </div>
+    <div class="stat-card">
+        <i class="ph ph-sparkle text-muted"></i>
+        <div class="stat-value">158</div>
+        <div class="stat-label">AI Insights</div>
+    </div>
+    <div class="stat-card">
+        <i class="ph ph-download-simple text-muted"></i>
+        <div class="stat-value">42</div>
+        <div class="stat-label">Exports Generated</div>
+    </div>
+</div>
+
+<div class="upload-zone" id="drop-zone">
+    <i class="ph ph-cloud-arrow-up upload-icon"></i>
+    <h2>Drag & Drop PPTX Files</h2>
+    <p class="text-muted">Or click to browse your computer (Max 50MB)</p>
+    <input type="file" id="file-input" style="display: none;" accept=".pptx">
+    <button class="btn btn-primary" style="margin-top: 1.5rem;" onclick="$('#file-input').click()">
+        <i class="ph ph-plus"></i> Select Files
+    </button>
+</div>
+
+<h3>Recent Files</h3>
+<div class="pptx-grid" style="margin-top: 1.5rem;">
+    <!-- Mock Data -->
+    <div class="pptx-card">
+        <div class="thumbnail">
+            <img src="https://images.unsplash.com/photo-1557804506-669a67965ba0?w=500" alt="Thumbnail">
+        </div>
+        <div class="card-info">
+            <div class="card-title">Corporate_Strategy_2025.pptx</div>
+            <div class="card-meta">
+                <span>12 Slides</span>
+                <span>2m ago</span>
+            </div>
+        </div>
+    </div>
+    <div class="pptx-card">
+        <div class="thumbnail">
+            <img src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=500" alt="Thumbnail">
+        </div>
+        <div class="card-info">
+            <div class="card-title">Marketing_Pitch_v2.pptx</div>
+            <div class="card-meta">
+                <span>8 Slides</span>
+                <span>1h ago</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $('#drop-zone').on('dragover', function (e) {
+        e.preventDefault();
+        $(this).css('border-color', 'var(--primary)');
+    }).on('dragleave', function () {
+        $(this).css('border-color', 'var(--border)');
+    }).on('drop', function (e) {
+        e.preventDefault();
+        $(this).css('border-color', 'var(--border)');
+        const files = e.originalEvent.dataTransfer.files;
+        handleFileUpload(files);
+    });
+
+    $('#file-input').on('change', function () {
+        handleFileUpload(this.files);
+    });
+
+    function handleFileUpload(files) {
+        if (files.length > 0) {
+            const formData = new FormData();
+            formData.append('file', files[0]);
+
+            // htmx manual trigger or use ajax
+            htmx.ajax('POST', '/upload', {
+                values: formData,
+                target: '#content'
+            });
+        }
+    }
+</script>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlideForge | AI-Powered PPTX Orchestrator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://unpkg.com/htmx.org@2.0.1"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Phospor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="logo">
+            <i class="ph-bold ph-presentation-chart"></i>
+            <span>SlideForge</span>
+        </div>
+        <ul class="nav-links">
+            <li class="nav-item active" hx-get="/dashboard" hx-target="#content">
+                <i class="ph ph-squares-four"></i>
+                Dashboard
+            </li>
+            <li class="nav-item" hx-get="/templates" hx-target="#content">
+                <i class="ph ph-file-pptx"></i>
+                Templates
+            </li>
+            <li class="nav-item" hx-get="/generator" hx-target="#content">
+                <i class="ph ph-magic-wand"></i>
+                Generator
+            </li>
+            <li class="nav-item" hx-get="/archive" hx-target="#content">
+                <i class="ph ph-archive"></i>
+                Archive
+            </li>
+        </ul>
+        <div class="nav-item" style="margin-top: auto; border-top: 1px solid var(--border); padding-top: 1rem;">
+            <i class="ph ph-gear"></i>
+            Settings
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header>
+            <div class="header-left">
+                <h1 id="page-title">Dashboard</h1>
+                <p class="text-muted">Welcome back to SlideForge</p>
+            </div>
+            <div class="user-profile">
+                <span id="current-time" style="font-weight: 500;"></span>
+                <div class="avatar"></div>
+            </div>
+        </header>
+
+        <section id="content" class="animate-fade-in">
+            <!-- Content will be swapped by HTMX -->
+            {% block content %}{% endblock %}
+        </section>
+    </main>
+
+    <script>
+        $(document).ready(function() {
+            function updateTime() {
+                const now = new Date();
+                $('#current-time').text(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            }
+            updateTime();
+            setInterval(updateTime, 60000);
+
+            // Handle Nav Active State
+            $('.nav-item').on('click', function() {
+                $('.nav-item').removeClass('active');
+                $(this).addClass('active');
+                $('#page-title').text($(this).text().trim());
+            });
+        });
+
+        // HTMX Loading Indicator
+        document.body.addEventListener('htmx:beforeRequest', function() {
+            $('#content').css('opacity', '0.5');
+        });
+        document.body.addEventListener('htmx:afterRequest', function() {
+            $('#content').css('opacity', '1');
+        });
+    </script>
+</body>
+</html>
