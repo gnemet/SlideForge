@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
@@ -31,8 +32,11 @@ type ApplicationConfig struct {
 }
 
 type StorageConfig struct {
+	// Original deprecated, use Stage
 	Original   string `mapstructure:"original"`
 	Thumbnails string `mapstructure:"thumbnails"`
+	Stage      string `mapstructure:"stage"`
+	Template   string `mapstructure:"template"`
 }
 
 type AIConfig struct {
@@ -85,8 +89,16 @@ func (c *DatabaseConfig) GetConnectStr() string {
 		sslmode = "disable"
 	}
 
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		c.User, c.Password, c.Host, c.Port, c.DBName, sslmode)
+
+	if c.Options != "" {
+		// Basic URL encoding for the options value: space -> %20
+		encodedOptions := strings.ReplaceAll(c.Options, " ", "%20")
+		connStr += fmt.Sprintf("&options=%s", encodedOptions)
+	}
+
+	return connStr
 }
 
 func LoadConfig() (*Config, error) {
@@ -112,6 +124,11 @@ func LoadConfig() (*Config, error) {
 		{"application.port", "PORT"},
 		{"application.authentication", "AUTH_ENABLED"},
 		{"ai.active_provider", "AI_PROVIDER"},
+
+		// Storage
+		{"application.storage.stage", "STORAGE_STAGE"},
+		{"application.storage.template", "STORAGE_TEMPLATE"},
+		{"application.storage.thumbnails", "STORAGE_THUMBNAILS"},
 
 		// AI Providers
 		{"ai.providers.gemini.key", "GEMINI_KEY"},

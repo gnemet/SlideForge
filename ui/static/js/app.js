@@ -4,8 +4,8 @@ window.Antigravity = {
         Theme: localStorage.getItem('theme') || 'light',
         Language: document.documentElement.lang || 'en'
     },
-    
-    copyToClipboard: function(text) {
+
+    copyToClipboard: function (text) {
         if (!text) return;
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(text).then(() => {
@@ -14,7 +14,7 @@ window.Antigravity = {
         }
     },
 
-    showNotification: function(msg, type = 'info') {
+    showNotification: function (msg, type = 'info') {
         const toast = document.createElement('div');
         toast.className = `toast-notification toast-${type}`;
         toast.innerHTML = `<i class='fas fa-info-circle'></i> ${msg}`;
@@ -31,6 +31,7 @@ $(document).ready(function () {
     initTheme();
     initGlobalEvents();
     initUserMenu();
+    initTerminalObserver();
 });
 
 function initTheme() {
@@ -39,14 +40,14 @@ function initTheme() {
 
     const themeIcon = themeToggle.querySelector('i');
     const currentTheme = localStorage.getItem('theme') || 'light';
-    
+
     document.documentElement.setAttribute('data-theme', currentTheme);
     updateThemeIcon(themeIcon, currentTheme);
 
     themeToggle.addEventListener('click', () => {
         const current = document.documentElement.getAttribute('data-theme') || 'light';
         const newTheme = current === 'light' ? 'dark' : 'light';
-        
+
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('theme', newTheme);
         updateThemeIcon(themeIcon, newTheme);
@@ -104,4 +105,19 @@ function initUserMenu() {
             dropdown.classList.add('hidden');
         }
     });
+}
+
+function initTerminalObserver() {
+    const output = document.getElementById('bg-process-output');
+    if (!output) return;
+
+    const evtSource = new EventSource("/events/logs");
+    evtSource.onmessage = function (event) {
+        output.textContent = event.data;
+        // Visual feedback
+        output.style.color = 'var(--accent-color)';
+        setTimeout(() => {
+            output.style.color = 'var(--text-color)';
+        }, 500);
+    };
 }

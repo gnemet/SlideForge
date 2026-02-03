@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -21,18 +22,45 @@ import (
 )
 
 type Observer struct {
-	cfg          *config.Config
-	db           *sql.DB
-	aiClient     *ai.Client
-	isProcessing bool
+	cfg         *config.Config
+	db          *sql.DB
+	aiClient    *ai.Client
+	activeTasks int
+	mu          sync.Mutex
+	LogChan     chan string
 }
 
-func NewObserver(cfg *config.Config, db *sql.DB, ai *ai.Client) *Observer {
+func NewObserver(cfg *config.Config, db *sql.DB, ai *ai.Client, logChan chan string) *Observer {
 	return &Observer{
 		cfg:      cfg,
 		db:       db,
 		aiClient: ai,
+		LogChan:  logChan,
 	}
+}
+
+func (o *Observer) log(format string, v ...interface{}) {
+	msg := fmt.Sprintf(format, v...)
+	log.Println(msg)
+	if o.LogChan != nil {
+		select {
+		case o.LogChan <- msg:
+		default:
+			// fast non-blocking drop if buffer full
+		}
+	}
+}
+
+func (o *Observer) incrementTask() {
+	o.mu.Lock()
+	o.activeTasks++
+	o.mu.Unlock()
+}
+
+func (o *Observer) decrementTask() {
+	o.mu.Lock()
+	o.activeTasks--
+	o.mu.Unlock()
 }
 
 func (o *Observer) Start(ctx context.Context) error {
@@ -42,25 +70,33 @@ func (o *Observer) Start(ctx context.Context) error {
 	}
 	defer watcher.Close()
 
-	originalDir := o.cfg.Application.Storage.Original
-	if originalDir == "" {
-		return fmt.Errorf("original storage directory not configured")
+	// Watch Stage directory
+	stageDir := o.cfg.Application.Storage.Stage
+	if stageDir == "" {
+		return fmt.Errorf("stage storage directory not configured")
 	}
 
-	// Ensure directory exists
-	if err := os.MkdirAll(originalDir, 0755); err != nil {
-		return fmt.Errorf("failed to create original directory: %v", err)
+	// Ensure directories exist
+	if err := os.MkdirAll(stageDir, 0755); err != nil {
+		return fmt.Errorf("failed to create stage directory: %v", err)
 	}
 
-	err = watcher.Add(originalDir)
+	templateDir := o.cfg.Application.Storage.Template
+	if templateDir != "" {
+		if err := os.MkdirAll(templateDir, 0755); err != nil {
+			o.log("Failed to create template directory: %v", err)
+		}
+	}
+
+	err = watcher.Add(stageDir)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Background observer started, watching: %s", originalDir)
+	o.log("Background observer started, watching: %s", stageDir)
 
 	// Initial scan
-	o.scanDirectory(originalDir)
+	o.scanDirectory(stageDir)
 
 	for {
 		select {
@@ -70,7 +106,8 @@ func (o *Observer) Start(ctx context.Context) error {
 			}
 			if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) {
 				if strings.HasSuffix(strings.ToLower(event.Name), ".pptx") {
-					log.Printf("Detected change in: %s", event.Name)
+					o.log("Detected change in: %s", event.Name)
+
 					// Debounce/delay for file transfer to complete
 					time.Sleep(2 * time.Second)
 					o.processFile(event.Name)
@@ -80,7 +117,8 @@ func (o *Observer) Start(ctx context.Context) error {
 			if !ok {
 				return nil
 			}
-			log.Printf("Watcher error: %v", err)
+			o.log("Watcher error: %v", err)
+
 		case <-ctx.Done():
 			return nil
 		}
@@ -90,7 +128,7 @@ func (o *Observer) Start(ctx context.Context) error {
 func (o *Observer) scanDirectory(dir string) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		log.Printf("Failed to scan directory: %v", err)
+		o.log("Failed to scan directory: %v", err)
 		return
 	}
 
@@ -103,13 +141,16 @@ func (o *Observer) scanDirectory(dir string) {
 }
 
 func (o *Observer) processFile(path string) {
+	o.incrementTask()
+	defer o.decrementTask()
+
 	filename := filepath.Base(path)
-	log.Printf("Processing file: %s", filename)
+	o.log("Processing file: %s", filename)
 
 	// Extract Tags
 	tags, err := pptx.ExtractTags(path)
 	if err != nil {
-		log.Printf("Failed to extract tags from %s: %v", filename, err)
+		o.log("Failed to extract tags from %s: %v", filename, err)
 	}
 
 	metadata := map[string]interface{}{
@@ -125,13 +166,13 @@ func (o *Observer) processFile(path string) {
 	// Create thumbnails
 	pngFiles, err := pptx.ExtractSlidesToPNG(path, thumbDir)
 	if err != nil {
-		log.Printf("Failed to extract thumbnails from %s: %v", filename, err)
+		o.log("Failed to extract thumbnails from %s: %v", filename, err)
 	}
 
 	// Extract Slide Content (Text & Styles)
 	slideDataMap, err := pptx.ExtractSlideContent(path)
 	if err != nil {
-		log.Printf("Failed to extract slide content from %s: %v", filename, err)
+		o.log("Failed to extract slide content from %s: %v", filename, err)
 	}
 
 	// Calculate Checksum (SHA256)
@@ -141,7 +182,7 @@ func (o *Observer) processFile(path string) {
 		hash := sha256.Sum256(fileBytes)
 		checksum = hex.EncodeToString(hash[:])
 	} else {
-		log.Printf("Failed to read file for checksum %s: %v", filename, err)
+		o.log("Failed to read file for checksum %s: %v", filename, err)
 	}
 
 	// Database persist
@@ -160,7 +201,7 @@ func (o *Observer) processFile(path string) {
 	if checksum != "" {
 		err = o.db.QueryRow("SELECT id FROM pptx_files WHERE checksum = $1", checksum).Scan(&existingID)
 		if err == nil {
-			log.Printf("File %s (checksum: %s) already exists (ID: %d). Skipping duplicate processing.", filename, checksum, existingID)
+			o.log("File %s (checksum: %s) already exists (ID: %d). Skipping duplicate processing.", filename, checksum, existingID)
 			return // idempotency: don't reprocess identical files
 		}
 	}
@@ -174,7 +215,7 @@ func (o *Observer) processFile(path string) {
 	if err == sql.ErrNoRows || existingID == 0 {
 		fileID, err = database.SavePPTXMetadata(o.db, pptxFile)
 		if err != nil {
-			log.Printf("Failed to save metadata to DB: %v", err)
+			o.log("Failed to save metadata to DB: %v", err)
 			return
 		}
 	} else if err == nil {
@@ -183,14 +224,14 @@ func (o *Observer) processFile(path string) {
 		_, err = o.db.Exec("UPDATE pptx_files SET metadata = $1, is_template = $2, thumbnail_dir_path = $3, checksum = $4 WHERE id = $5",
 			pptxFile.Metadata, pptxFile.IsTemplate, pptxFile.ThumbnailDirPath, pptxFile.Checksum, fileID)
 		if err != nil {
-			log.Printf("Failed to update metadata in DB: %v", err)
+			o.log("Failed to update metadata in DB: %v", err)
 		}
 
 		// If we are updating, we MIGHT want to reprocess slides if forced, but for now we assume simple idempotency
 		// For safety, let's delete existing slides so we don't duplicate them if we continue
 		_, _ = o.db.Exec("DELETE FROM collected_slides WHERE pptx_file_id = $1", fileID)
 	} else {
-		log.Printf("DB error checking existing file: %v", err)
+		o.log("DB error checking existing file: %v", err)
 		return
 	}
 
@@ -202,7 +243,7 @@ func (o *Observer) processFile(path string) {
 		slideNum := i + 1
 		relPath, err := filepath.Rel(o.cfg.Application.Storage.Thumbnails, png)
 		if err != nil {
-			log.Printf("Failed to get relative path for %s: %v", png, err)
+			o.log("Failed to get relative path for %s: %v", png, err)
 			relPath = png // fallback
 		}
 
@@ -226,7 +267,7 @@ func (o *Observer) processFile(path string) {
 					slideSummary = summary
 					slideSummaries = append(slideSummaries, summary)
 				} else {
-					log.Printf("Failed to summarize slide %d of %s: %v", slideNum, filename, err)
+					o.log("Failed to summarize slide %d of %s: %v", slideNum, filename, err)
 				}
 
 				// Title
@@ -248,7 +289,7 @@ func (o *Observer) processFile(path string) {
 			Title:      slideTitle,
 		})
 		if err != nil {
-			log.Printf("Failed to save slide %d: %v", slideNum, err)
+			o.log("Failed to save slide %d: %v", slideNum, err)
 		}
 	}
 
@@ -260,7 +301,7 @@ func (o *Observer) processFile(path string) {
 		if err == nil {
 			database.UpdatePPTXSummary(o.db, fileID, overallSummary)
 		} else {
-			log.Printf("Failed to generate overall summary for %s: %v", filename, err)
+			o.log("Failed to generate overall summary for %s: %v", filename, err)
 		}
 
 		// Title
@@ -272,21 +313,38 @@ func (o *Observer) processFile(path string) {
 		}
 	}
 
-	log.Printf("Successfully processed: %s (Tags: %v)", filename, tags)
+	o.log("Successfully processed: %s (Tags: %v)", filename, tags)
+
+	// Move file to Template directory
+	if o.cfg.Application.Storage.Template != "" {
+		newPath := filepath.Join(o.cfg.Application.Storage.Template, filename)
+		err := os.Rename(path, newPath)
+		if err != nil {
+			o.log("Failed to move %s to template folder: %v", filename, err)
+		} else {
+			o.log("Moved %s to %s", filename, newPath)
+
+			// Update database path
+			_, err := o.db.Exec("UPDATE pptx_files SET original_file_path = $1 WHERE id = $2", newPath, fileID)
+			if err != nil {
+				o.log("Failed to update file path in DB: %v", err)
+			}
+		}
+	}
 }
 
 func (o *Observer) ReprocessAll() {
-	if o.isProcessing {
-		return
-	}
-	o.isProcessing = true
-	defer func() { o.isProcessing = false }()
+	o.incrementTask()
+	defer o.decrementTask()
 
-	originalDir := o.cfg.Application.Storage.Original
-	log.Printf("Retriggering full scan of %s", originalDir)
-	o.scanDirectory(originalDir)
+	stageDir := o.cfg.Application.Storage.Stage
+	o.log("Retriggering full scan of %s", stageDir)
+
+	o.scanDirectory(stageDir)
 }
 
 func (o *Observer) IsProcessing() bool {
-	return o.isProcessing
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.activeTasks > 0
 }

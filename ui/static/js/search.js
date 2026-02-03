@@ -1,5 +1,5 @@
 let searchModes = [
-    { value: 'fts', label: 'Full Text (AI)', title: 'Search using full text and AI analysis', icon: 'fa-magic', hasThreshold: false },
+    { value: 'fts', label: 'Full Text', title: 'Search using full text', icon: 'fa-magic', hasThreshold: false },
     { value: 'similarity', label: 'Similarity', title: 'Find slides with similar content', icon: 'fa-equals', hasThreshold: true },
     { value: 'word_similarity', label: 'Word Similarity', title: 'Find slides with similar words', icon: 'fa-font', hasThreshold: true }
 ];
@@ -45,7 +45,7 @@ function updateSearchUI() {
     const btnIcon = document.querySelector('#mode-loop-btn i');
 
     if (labelSpan) labelSpan.innerText = mode.label;
-    if (btnIcon) btnIcon.className = 'fas ' + mode.icon;
+    if (btnIcon) btnIcon.className = 'ph ' + mode.icon;
 
     // Update Button Title
     const btn = document.getElementById('mode-loop-btn');

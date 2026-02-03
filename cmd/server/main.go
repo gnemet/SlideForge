@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/gnemet/SlideForge/internal/ai"
@@ -26,11 +27,16 @@ import (
 )
 
 var (
-	sqlDB    *sql.DB
-	tmpl     *template.Template
-	cfg      *config.Config
-	aiClient *ai.Client
-	obs      *observer.Observer
+	sqlDB      *sql.DB
+	tmpl       *template.Template
+	cfg        *config.Config
+	aiClient   *ai.Client
+	obs        *observer.Observer
+	logChan    chan string
+	logBuffer  []string
+	logMutex   sync.Mutex
+	sseClients = make(map[chan string]bool)
+	sseMutex   sync.Mutex
 )
 
 func main() {
@@ -41,6 +47,10 @@ func main() {
 	}
 
 	aiClient = ai.NewClient(cfg)
+
+	// Initialize Log Channel
+	logChan = make(chan string, 100)
+	go processLogs()
 
 	// Database Connection - Jiramntr Style
 	sqlDB, err = database.NewConnection(cfg.Database.GetConnectStr())
@@ -66,7 +76,8 @@ func main() {
 	log.Println("Database connection established")
 
 	// Start Background Observer
-	obs = observer.NewObserver(cfg, sqlDB, aiClient)
+	obs = observer.NewObserver(cfg, sqlDB, aiClient, logChan)
+
 	go func() {
 		if err := obs.Start(context.Background()); err != nil {
 			log.Printf("Observer error: %v", err)
@@ -122,6 +133,7 @@ func main() {
 	http.HandleFunc("/reprocess-status", AuthMiddleware(handleReprocessStatus))
 	http.HandleFunc("/search", AuthMiddleware(handleSearch))
 	http.HandleFunc("/search-settings", AuthMiddleware(handleSearchSettings))
+	http.HandleFunc("/events/logs", AuthMiddleware(handleEventsLogs))
 
 	port := cfg.Application.Port
 	if port == 0 {
@@ -598,17 +610,48 @@ func getBaseData(r *http.Request, title string, activeNav string) map[string]int
 	if cfg != nil && cfg.Application.Version != "" {
 		version = cfg.Application.Version
 	}
+	author := "Unknown"
+	if cfg != nil && cfg.Application.Author != "" {
+		author = cfg.Application.Author
+	}
+	lastBuild := time.Now().Format("2006-01-02 15:04") // Default or from config if set
+	if cfg != nil && cfg.Application.LastBuild != "" {
+		lastBuild = cfg.Application.LastBuild
+	}
+	engine := "Standard Engine"
+	if cfg != nil && cfg.Application.Engine != "" {
+		engine = cfg.Application.Engine
+	}
+	copyright := fmt.Sprintf("%d", time.Now().Year())
+	if cfg != nil && cfg.Application.Copyright != "" {
+		copyright = cfg.Application.Copyright
+	}
+	aiProvider := "Unknown"
+	if cfg != nil {
+		aiProvider = cfg.AI.ActiveProvider
+	}
+	dbName := "Unknown"
+	if cfg != nil {
+		dbName = cfg.Database.DBName
+	}
 
 	return map[string]interface{}{
-		"Title":     title,
-		"ActiveNav": activeNav,
-		"Lang":      lang,
-		"LangsJSON": string(langsJSON),
-		"IsAuth":    authUser != "",
-		"UserName":  userName,
+		"Title":        title,
+		"ActiveNav":    activeNav,
+		"Lang":         lang,
+		"LangsJSON":    string(langsJSON),
+		"IsAuth":       authUser != "",
+		"UserName":     userName,
+		"IsProcessing": obs.IsProcessing(),
 		"App": map[string]string{
-			"Name":    appName,
-			"Version": version,
+			"Name":       appName,
+			"Version":    version,
+			"Author":     author,
+			"LastBuild":  lastBuild,
+			"Engine":     engine,
+			"Copyright":  copyright,
+			"AIProvider": aiProvider,
+			"DBName":     dbName,
 		},
 	}
 }
@@ -695,4 +738,70 @@ func handleSetLanguage(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	http.Redirect(w, r, r.Header.Get("Referer"), http.StatusSeeOther)
+}
+
+func processLogs() {
+	for msg := range logChan {
+		// Append to buffer
+		logMutex.Lock()
+		logBuffer = append(logBuffer, msg)
+		if len(logBuffer) > 50 {
+			logBuffer = logBuffer[1:]
+		}
+		logMutex.Unlock()
+
+		// Broadcast to SSE clients
+		sseMutex.Lock()
+		for clientChan := range sseClients {
+			select {
+			case clientChan <- msg:
+			default:
+				// Slow client, skip
+			}
+		}
+		sseMutex.Unlock()
+	}
+}
+
+func handleEventsLogs(w http.ResponseWriter, r *http.Request) {
+	// Set headers for SSE
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Create client channel
+	clientChan := make(chan string, 10)
+
+	// Register client
+	sseMutex.Lock()
+	sseClients[clientChan] = true
+	sseMutex.Unlock()
+
+	defer func() {
+		sseMutex.Lock()
+		delete(sseClients, clientChan)
+		sseMutex.Unlock()
+		close(clientChan)
+	}()
+
+	// Send history
+	logMutex.Lock()
+	for _, msg := range logBuffer {
+		fmt.Fprintf(w, "data: %s\n\n", msg)
+	}
+	logMutex.Unlock()
+	w.(http.Flusher).Flush()
+
+	// Stream new messages
+	ctx := r.Context()
+	for {
+		select {
+		case msg := <-clientChan:
+			fmt.Fprintf(w, "data: %s\n\n", msg)
+			w.(http.Flusher).Flush()
+		case <-ctx.Done():
+			return
+		}
+	}
 }

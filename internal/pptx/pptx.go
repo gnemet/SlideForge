@@ -2,6 +2,7 @@ package pptx
 
 import (
 	"archive/zip"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"os"
@@ -79,7 +80,7 @@ func ExtractTags(pptxPath string) ([]string, error) {
 	tagMap := make(map[string]bool)
 
 	for _, f := range r.File {
-		if filepath.HasPrefix(f.Name, "ppt/slides/slide") && filepath.Ext(f.Name) == ".xml" {
+		if strings.HasPrefix(f.Name, "ppt/slides/slide") && strings.HasSuffix(f.Name, ".xml") {
 			rc, err := f.Open()
 			if err != nil {
 				continue
@@ -110,10 +111,29 @@ func ExtractTags(pptxPath string) ([]string, error) {
 type SlideData struct {
 	SlideNumber int
 	Text        string
-	Styles      map[string]interface{}
+	Styles      interface{} // Changed to interface{} to support JSONSlide structure
 }
 
-// ExtractSlideContent extracts text and style info from all slides in a PPTX.
+// Structures for rich JSON extraction
+type JSONSlide struct {
+	Index  int     `json:"index"`
+	Shapes []Shape `json:"shapes"`
+}
+
+type Shape struct {
+	Type string    `json:"type"` // title | body | other
+	Runs []TextRun `json:"runs"`
+}
+
+type TextRun struct {
+	Text  string `json:"text"`
+	Bold  bool   `json:"bold,omitempty"`
+	Size  int    `json:"size,omitempty"` // pt
+	Font  string `json:"font,omitempty"`
+	Color string `json:"color,omitempty"`
+}
+
+// ExtractSlideContent extracts text and rich structure info from all slides in a PPTX.
 func ExtractSlideContent(pptxPath string) (map[int]SlideData, error) {
 	r, err := zip.OpenReader(pptxPath)
 	if err != nil {
@@ -121,52 +141,156 @@ func ExtractSlideContent(pptxPath string) (map[int]SlideData, error) {
 	}
 	defer r.Close()
 
-	textRegex := regexp.MustCompile(`<a:t>(.*?)</a:t>`)
-	slideNumRegex := regexp.MustCompile(`ppt/slides/slide(\d+)\.xml`)
-
 	result := make(map[int]SlideData)
 
 	for _, f := range r.File {
-		matches := slideNumRegex.FindStringSubmatch(f.Name)
-		if len(matches) > 1 && filepath.Ext(f.Name) == ".xml" {
-			slideNum, _ := strconv.Atoi(matches[1])
+		// Proper check for slide files: starts with ppt/slides/slide and ends with .xml
+		if strings.HasPrefix(f.Name, "ppt/slides/slide") && strings.HasSuffix(f.Name, ".xml") {
+			// Extract index from filename, e.g., ppt/slides/slide1.xml -> 1
+			baseName := filepath.Base(f.Name)
+			numStr := strings.TrimSuffix(strings.TrimPrefix(baseName, "slide"), ".xml")
+			slideNum, err := strconv.Atoi(numStr)
+			if err != nil {
+				continue
+			}
 
 			rc, err := f.Open()
 			if err != nil {
 				continue
 			}
-			content, err := io.ReadAll(rc)
+
+			jsonSlide, plainText, err := parseSlideXML(rc, slideNum)
 			rc.Close()
 			if err != nil {
-				continue
-			}
-
-			// Extract all text
-			var slideText strings.Builder
-			textMatches := textRegex.FindAllStringSubmatch(string(content), -1)
-			for _, tm := range textMatches {
-				if len(tm) > 1 {
-					slideText.WriteString(tm[1])
-					slideText.WriteString(" ")
-				}
-			}
-
-			// Basic style info (heuristic: count specific tags or attributes)
-			styleInfo := make(map[string]interface{})
-			if strings.Contains(string(content), "sz=\"") {
-				styleInfo["has_custom_font_size"] = true
-			}
-			if strings.Contains(string(content), "<a:schemeClr") {
-				styleInfo["uses_theme_colors"] = true
+				continue // skip on error
 			}
 
 			result[slideNum] = SlideData{
 				SlideNumber: slideNum,
-				Text:        strings.TrimSpace(slideText.String()),
-				Styles:      styleInfo,
+				Text:        strings.TrimSpace(plainText),
+				Styles:      jsonSlide, // Store the rich structure here
 			}
 		}
 	}
 
 	return result, nil
+}
+
+func parseSlideXML(r io.Reader, index int) (*JSONSlide, string, error) {
+	dec := xml.NewDecoder(r)
+
+	slide := &JSONSlide{Index: index}
+	var textBuilder strings.Builder
+
+	var currentShape *Shape
+	var currentRun *TextRun
+	var placeholderType string
+
+	for {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, "", err
+		}
+
+		switch el := tok.(type) {
+
+		case xml.StartElement:
+			switch el.Name.Local {
+
+			case "ph": // placeholder (title/body)
+				for _, a := range el.Attr {
+					if a.Name.Local == "type" {
+						placeholderType = a.Value
+					}
+				}
+
+			case "sp": // shape
+				currentShape = &Shape{
+					Type: normalizePlaceholder(placeholderType),
+				}
+
+			case "r": // text run
+				currentRun = &TextRun{}
+
+			case "rPr": // run formatting
+				if currentRun != nil {
+					for _, a := range el.Attr {
+						switch a.Name.Local {
+						case "b":
+							currentRun.Bold = a.Value == "1"
+						case "sz":
+							if sz, err := strconv.Atoi(a.Value); err == nil {
+								currentRun.Size = sz / 100 // 1/100 pt
+							}
+						}
+					}
+				}
+
+			case "latin": // font family
+				if currentRun != nil {
+					for _, a := range el.Attr {
+						if a.Name.Local == "typeface" {
+							currentRun.Font = a.Value
+						}
+					}
+				}
+
+			case "srgbClr": // color
+				if currentRun != nil {
+					for _, a := range el.Attr {
+						if a.Name.Local == "val" {
+							currentRun.Color = "#" + a.Value
+						}
+					}
+				}
+
+			case "t": // actual text
+				if currentRun != nil {
+					var text string
+					if err := dec.DecodeElement(&text, &el); err == nil {
+						currentRun.Text = text
+					}
+				}
+			}
+
+		case xml.EndElement:
+			switch el.Name.Local {
+
+			case "r":
+				if currentShape != nil &&
+					currentRun != nil {
+					// Append text to builder regardless of shape separation, adding space for separation
+					if currentRun.Text != "" {
+						currentShape.Runs = append(currentShape.Runs, *currentRun)
+						textBuilder.WriteString(currentRun.Text)
+						textBuilder.WriteString(" ")
+					}
+				}
+				currentRun = nil
+
+			case "sp":
+				if currentShape != nil && len(currentShape.Runs) > 0 {
+					slide.Shapes = append(slide.Shapes, *currentShape)
+				}
+				currentShape = nil
+				placeholderType = ""
+			}
+		}
+	}
+
+	return slide, textBuilder.String(), nil
+}
+
+func normalizePlaceholder(ph string) string {
+	switch ph {
+	case "title", "ctrTitle":
+		return "title"
+	case "body":
+		return "body"
+	default:
+		return "other"
+	}
 }

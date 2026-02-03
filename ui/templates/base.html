@@ -18,52 +18,74 @@
 </head>
 
 <body>
-    <aside class="sidebar">
-        <div class="logo">
-            <i class="ph-bold ph-presentation-chart"></i>
-            <span>SlideForge</span>
-        </div>
-        <ul class="nav-links">
-            <li class="nav-item active" hx-get="/dashboard" hx-target="#content">
-                <i class="ph ph-squares-four"></i>
-                Dashboard
-            </li>
-            <li class="nav-item" hx-get="/templates" hx-target="#content">
-                <i class="ph ph-file-pptx"></i>
-                Templates
-            </li>
-            <li class="nav-item" hx-get="/generator" hx-target="#content">
-                <i class="ph ph-magic-wand"></i>
-                Generator
-            </li>
-            <li class="nav-item" hx-get="/archive" hx-target="#content">
-                <i class="ph ph-archive"></i>
-                Archive
-            </li>
-        </ul>
-        <div class="nav-item" style="margin-top: auto; border-top: 1px solid var(--border); padding-top: 1rem;">
-            <i class="ph ph-gear"></i>
-            Settings
-        </div>
-    </aside>
-
-    <main class="main-content">
-        <header>
-            <div class="header-left">
-                <h1 id="page-title">Dashboard</h1>
-                <p class="text-muted">Welcome back to SlideForge</p>
+    <div class="app-layout" style="display: flex; height: calc(100vh - 32px); overflow: hidden;">
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="ph-bold ph-presentation-chart"></i>
+                <span>SlideForge</span>
             </div>
-            <div class="user-profile">
-                <span id="current-time" style="font-weight: 500;"></span>
-                <div class="avatar"></div>
+            <ul class="nav-links">
+                <li class="nav-item active" hx-get="/dashboard" hx-target="#content">
+                    <i class="ph ph-squares-four"></i>
+                    Dashboard
+                </li>
+                <li class="nav-item" hx-get="/templates" hx-target="#content">
+                    <i class="ph ph-file-pptx"></i>
+                    Templates
+                </li>
+                <li class="nav-item" hx-get="/generator" hx-target="#content">
+                    <i class="ph ph-magic-wand"></i>
+                    Generator
+                </li>
+                <li class="nav-item" hx-get="/archive" hx-target="#content">
+                    <i class="ph ph-archive"></i>
+                    Archive
+                </li>
+            </ul>
+            <div class="nav-item" style="margin-top: auto; border-top: 1px solid var(--border); padding-top: 1rem;">
+                <i class="ph ph-gear"></i>
+                Settings
             </div>
-        </header>
+        </aside>
 
-        <section id="content" class="animate-fade-in">
-            <!-- Content will be swapped by HTMX -->
-            {{ template "content" . }}
-        </section>
-    </main>
+        <main class="main-content" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+            <header>
+                <div class="header-left">
+                    <h1 id="page-title">{{.Title}}</h1>
+                    <p class="text-muted">Welcome back to SlideForge</p>
+                </div>
+                <div class="user-profile">
+                    <span id="current-time" style="font-weight: 500;"></span>
+                    <div class="avatar">{{slice .UserName 0 1}}</div>
+                </div>
+            </header>
+
+            <section id="content" class="animate-fade-in" style="flex: 1; overflow-y: auto; padding: 2rem;">
+                <!-- Content will be swapped by HTMX -->
+                {{ template "content" . }}
+            </section>
+        </main>
+    </div>
+
+    {{ template "footer" . }}
+
+    <script>
+        // Log Stream
+        const evtSource = new EventSource("/events/logs");
+        evtSource.onmessage = function (event) {
+            const terminal = document.getElementById('log-terminal');
+            if (terminal) {
+                terminal.style.display = 'flex';
+                terminal.textContent = event.data;
+                terminal.style.color = 'var(--text-color)';
+                // animate flush
+                terminal.animate([
+                    { opacity: 0.5 },
+                    { opacity: 1 }
+                ], { duration: 300 });
+            }
+        };
+    </script>
 
     <script>
         $(document).ready(function () {

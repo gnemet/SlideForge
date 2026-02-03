@@ -6,3 +6,5 @@ thumbnails/
 *.log
 mnt/
 templates
+.temp/
+thumbnails/

@@ -9,17 +9,7 @@ application:
   engine: "Antigravity Engine"
   reference_doc_path: "docs/architecture/tech_stack.md"
   parser_rules_doc_path: "docs/implementation/development_workflow.md"
-  storage:
-    original: "/home/gnemet/GitHub/SlideForge/mnt/bdo/original"
-    thumbnails: "/home/gnemet/GitHub/SlideForge/mnt/bdo/thumbnails"
 
-database:
-  # Connection details are now managed via environment variables (PG_HOST, PG_PORT, etc.)
-  host: "localhost"
-  port: 5433
-  dbname: "slideforge"
-  user: "root"
-  sslmode: "disable"
 
 ai:
   active_provider: "gemini"
