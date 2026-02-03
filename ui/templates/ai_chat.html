@@ -3,10 +3,24 @@
 {{define "content"}}
 <div class="chat-container animate-fade-in">
     <header class="chat-header">
-        <i class="fas fa-robot"></i>
-        <div>
-            <h2>{{T .Lang `ai_tester` }}</h2>
-            <small class="text-muted">Direct communication with {{.App.AIProvider}} engine</small>
+        <div class="header-main">
+            <i class="fas fa-robot"></i>
+            <div>
+                <h2>{{T .Lang `ai_tester` }}</h2>
+                <small class="text-muted">Direct communication with {{.App.AIProvider}} engine</small>
+            </div>
+        </div>
+        <div class="header-status">
+            <div class="status-badge" title="AI Engine Status">
+                <span class="pulse"></span>
+                <span class="status-text">Live</span>
+            </div>
+            {{if .Usage}}
+            <div class="usage-badge" title="Estimated Usage / Balance">
+                <i class="fas fa-coins"></i>
+                <span class="usage-text">{{.Usage.Balance}} / {{.Usage.Budget}}</span>
+            </div>
+            {{end}}
         </div>
     </header>
 

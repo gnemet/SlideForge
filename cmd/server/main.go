@@ -592,6 +592,14 @@ func handleAbout(w http.ResponseWriter, r *http.Request) {
 
 func handleAITester(w http.ResponseWriter, r *http.Request) {
 	data := getBaseData(r, "AI Tester", "ai_tester")
+
+	// Placeholder for Billing/Usage Data
+	data["Usage"] = map[string]interface{}{
+		"Balance": "$0.42",
+		"Budget":  "$10.00",
+		"Status":  "active",
+	}
+
 	renderTemplate(w, "ai_chat.html", data)
 }
 
