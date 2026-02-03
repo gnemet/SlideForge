@@ -2,19 +2,19 @@ package i18n
 
 import (
 	"encoding/json"
+	"io/fs"
 	"net/http"
-	"os"
 	"path/filepath"
 )
 
 var translations = make(map[string]map[string]string)
 
-func Init() {
-	files, _ := os.ReadDir("resources")
+func Init(resourcesFS fs.FS) {
+	files, _ := fs.ReadDir(resourcesFS, ".")
 	for _, f := range files {
-		if filepath.Ext(f.Name()) == ".json" {
+		if !f.IsDir() && filepath.Ext(f.Name()) == ".json" {
 			lang := f.Name()[:len(f.Name())-5]
-			data, _ := os.ReadFile(filepath.Join("resources", f.Name()))
+			data, _ := fs.ReadFile(resourcesFS, f.Name())
 			var t map[string]string
 			json.Unmarshal(data, &t)
 			translations[lang] = t

@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gnemet/SlideForge"
 	"github.com/gnemet/SlideForge/internal/ai"
 	"github.com/gnemet/SlideForge/internal/config"
 	"github.com/gnemet/SlideForge/internal/database"
@@ -89,7 +90,8 @@ func main() {
 	os.MkdirAll("uploads", 0755)
 	os.MkdirAll("thumbnails", 0755)
 
-	i18n.Init()
+	i18nFS, _ := fs.Sub(SlideForge.EmbeddedAssets, "resources")
+	i18n.Init(i18nFS)
 
 	// Templates - Parse layout and datagrid templates
 	funcMap := template.FuncMap{
@@ -111,8 +113,8 @@ func main() {
 		funcMap[k] = v
 	}
 
-	tmpl = template.Must(template.New("").Funcs(funcMap).ParseGlob("ui/templates/layout/*.html"))
-	tmpl = template.Must(tmpl.ParseGlob("ui/templates/partials/*.html"))
+	// Load templates from embedded FS
+	tmpl = template.Must(template.New("").Funcs(funcMap).ParseFS(SlideForge.EmbeddedAssets, "ui/templates/layout/*.html", "ui/templates/partials/*.html"))
 	// Automagically include all datagrid library templates
 	tmpl = template.Must(tmpl.ParseFS(datagrid.UIAssets, "ui/templates/partials/datagrid/*.html"))
 
@@ -123,7 +125,10 @@ func main() {
 		{Field: "is_template", Label: "Template", Visible: true, Type: "boolean"},
 	}, datagrid.DatagridConfig{})
 
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("ui/static"))))
+	// Static files - Preferred from embedded FS for portability
+	staticUI, _ := fs.Sub(SlideForge.EmbeddedAssets, "ui/static")
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticUI))))
+
 	http.Handle("/thumbnails/", http.StripPrefix("/thumbnails/", http.FileServer(http.Dir(cfg.Application.Storage.Thumbnails))))
 
 	// Datagrid library assets (Embedded in library)
@@ -367,10 +372,16 @@ func handleSearchSettings(w http.ResponseWriter, r *http.Request) {
 
 func renderTemplate(w http.ResponseWriter, name string, data interface{}) {
 	t := template.Must(tmpl.Clone())
-	t = template.Must(t.ParseFiles("ui/templates/" + name))
-	err := t.ExecuteTemplate(w, name, data)
+	// Try to find the specific template in embedded FS
+	_, err := t.ParseFS(SlideForge.EmbeddedAssets, "ui/templates/"+name)
 	if err != nil {
-		log.Printf("Template error (%s): %v", name, err)
+		log.Printf("Template parse error (%s): %v", name, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = t.ExecuteTemplate(w, name, data)
+	if err != nil {
+		log.Printf("Template execution error (%s): %v", name, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
