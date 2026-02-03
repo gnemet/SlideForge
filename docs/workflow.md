@@ -16,6 +16,7 @@ sequenceDiagram
     Note right of S: File Ingest
     O->>S: Detect Change
     O->>S: Unzip & Extract XML
+    O->>S: Render Thumbnails (PNG)
     O->>D: Save Metadata & JSON
     O->>T: Move Original File
     Note left of T: Finalized

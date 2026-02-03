@@ -9,26 +9,33 @@ graph TD
     C -->|Invalid| D[Log & Skip]
     C -->|PPTX| E[Move to Stage]
     
-    E --> F[Convert to PNGs]
-    F --> G[Extract Raw Text]
-    G --> H[Calculate Checksum]
+    E --> F[Unzip & Parse XML]
+    F --> G[Convert Slides to PNG]
+    G --> H[Store in /thumbnails]
+    H --> I[Extract Raw Text]
+    I --> J[Calculate Checksum]
     
-    H --> I{Exists in DB?}
-    I -->|Yes| J[Move to Archive]
-    I -->|No| K[Save Metadata to PG]
+    J --> K{Exists in DB?}
+    K -->|Yes| L[Move to Template/Archive]
+    K -->|No| M[Save Metadata to PG]
     
-    K --> L[Trigger AI Analysis]
-    L --> M[Searchable Data Ready]
+    M --> N[Trigger AI Analysis]
+    N --> O[Searchable Data Ready]
     
-    subgraph "Processing Tier"
-    F
+    subgraph "Visual Pipeline"
     G
     H
     end
     
+    subgraph "Data Pipeline"
+    F
+    I
+    J
+    end
+    
     subgraph "Persistence Tier"
-    K
     M
+    O
     end
 ```
 
