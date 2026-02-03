@@ -619,7 +619,8 @@ func handleAIChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. Render AI Response snippet
-	aiHtml := fmt.Sprintf(`<div class="message ai">%s</div>`, template.HTMLEscapeString(response))
+	aiMarkdown := blackfriday.Run([]byte(response))
+	aiHtml := fmt.Sprintf(`<div class="message ai">%s</div>`, string(aiMarkdown))
 
 	// Return both
 	w.Write([]byte(userHtml + aiHtml))
