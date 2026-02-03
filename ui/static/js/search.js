@@ -1,12 +1,15 @@
-const searchModes = [
-    { value: 'fts', label: 'Full Text (AI)', icon: 'fa-magic', hasThreshold: false },
-    { value: 'similarity', label: 'Similarity', icon: 'fa-equals', hasThreshold: true },
-    { value: 'word_similarity', label: 'Word Similarity', icon: 'fa-font', hasThreshold: true }
+let searchModes = [
+    { value: 'fts', label: 'Full Text (AI)', title: 'Search using full text and AI analysis', icon: 'fa-magic', hasThreshold: false },
+    { value: 'similarity', label: 'Similarity', title: 'Find slides with similar content', icon: 'fa-equals', hasThreshold: true },
+    { value: 'word_similarity', label: 'Word Similarity', title: 'Find slides with similar words', icon: 'fa-font', hasThreshold: true }
 ];
 
 let currentModeIdx = 0;
 
 function initSearchComponent() {
+    if (window.SEARCH_MODES_CONFIG) {
+        searchModes = window.SEARCH_MODES_CONFIG;
+    }
     // Restore state if available
     const modeInput = document.getElementById('search-mode');
     if (modeInput) {
@@ -43,6 +46,10 @@ function updateSearchUI() {
 
     if (labelSpan) labelSpan.innerText = mode.label;
     if (btnIcon) btnIcon.className = 'fas ' + mode.icon;
+
+    // Update Button Title
+    const btn = document.getElementById('mode-loop-btn');
+    if (btn) btn.title = mode.title || '';
 
     // Toggle Threshold Visibility
     const thresholdControl = document.getElementById('threshold-control');

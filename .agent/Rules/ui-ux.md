@@ -9,7 +9,7 @@ trigger: always_on
 - **Card-Based Layout**: Use generous whitespace and subtle shadows.
 - **Flat UI**: Low contrast, no gradients, no glossy effects, and no clutter.
 - **Theme Support**: Native Dark and Light modes on all pages.
-- **Language Support**: Language selection modes on all pages.
+- **Language Support**: Language selection modes on all pages. Use the language resource instead of hardcode text 
 
 ## Typography
 - **System Font Stack**: Avoid custom font loads for speed.

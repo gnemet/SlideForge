@@ -192,9 +192,10 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var threshold float64
-	if mode == "similarity" {
+	switch mode {
+	case "similarity":
 		sqlDB.QueryRow("SELECT value FROM search_settings WHERE key = 'similarity_threshold'").Scan(&threshold)
-	} else if mode == "word_similarity" {
+	case "word_similarity":
 		sqlDB.QueryRow("SELECT value FROM search_settings WHERE key = 'word_similarity_threshold'").Scan(&threshold)
 	}
 
@@ -224,10 +225,11 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	default: // FTS
 		ftsCol := "fts_combined"
 		config := "english"
-		if lang == "hu" {
+		switch lang {
+		case "hu":
 			config = "hungarian"
 			ftsCol = "fts_hu"
-		} else if lang == "en" {
+		case "en":
 			ftsCol = "fts_en"
 		}
 

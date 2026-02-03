@@ -19,5 +19,11 @@
     "filter_presentations": "Filter presentations",
     "your_collection": "Your Collection",
     "generate": "Generate Deck",
-    "drag_slides_here": "Drag slides here to build your deck"
+    "drag_slides_here": "Drag slides here to build your deck",
+    "search_mode_fts": "Full Text (AI)",
+    "search_mode_fts_title": "Search using full text and AI analysis",
+    "search_mode_similarity": "Similarity",
+    "search_mode_similarity_title": "Find slides with similar content",
+    "search_mode_word_similarity": "Word Similarity",
+    "search_mode_word_similarity_title": "Find slides with similar words"
 }

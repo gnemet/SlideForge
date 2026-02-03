@@ -19,5 +19,11 @@
     "filter_presentations": "Prezentációk szűrése",
     "your_collection": "Saját gyűjtemény",
     "generate": "Deck generálása",
-    "drag_slides_here": "Húzza ide a diákat a pakli összeállításához"
+    "drag_slides_here": "Húzza ide a diákat a pakli összeállításához",
+    "search_mode_fts": "Teljes Szöveg (AI)",
+    "search_mode_fts_title": "Keresés teljes szöveg és MI elemzés alapján",
+    "search_mode_similarity": "Hasonlóság",
+    "search_mode_similarity_title": "Hasonló tartalmú diák keresése",
+    "search_mode_word_similarity": "Szó Hasonlóság",
+    "search_mode_word_similarity_title": "Hasonló szavakat tartalmazó diák keresése"
 }
