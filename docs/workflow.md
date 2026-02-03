@@ -1,23 +1,51 @@
 # SlideForge Workflow
 
-SlideForge is an AI-powered PPTX orchestrator designed to streamline the analysis and reorganization of presentation content.
+SlideForge is a metadata-driven AI orchestrator for PPTX assets. It follows a strict ingestion and processing pipeline.
 
-## 1. Upload & Extraction
-- **Drag & Drop**: Users upload PPTX files through the premium dashboard.
-- **Conversion**: The backend uses `LibreOffice` and `pdftoppm` to convert slides into high-resolution PNGs.
-- **Persistence**: Metadata and slide paths are stored in PostgreSQL 18.
+## Ingestion Pipeline
 
-## 2. Selection & Analysis
-- **Grid View**: A glassmorphism-style selection UI displays extracted slides.
-- **AI Analysis**: Individual or multiple slides can be analyzed using **Gemini**, **OpenAI**, or **Claude**.
-- **Insights**: The AI describes topics, extracted text, and visual styles to help in categorization.
+```mermaid
+sequenceDiagram
+    participant U as User (UI)
+    participant S as Stage Folder
+    participant O as Observer
+    participant T as Template (Archive)
+    participant D as PostgreSQL
+    
+    U->>S: Upload PPTX
+    Note right of S: File Ingest
+    O->>S: Detect Change
+    O->>S: Unzip & Extract XML
+    O->>D: Save Metadata & JSON
+    O->>T: Move Original File
+    Note left of T: Finalized
+```
 
-## 3. Smart Stitching (Upcoming)
-- **Collection**: Selected slides across different presentations can be added to a "Collection".
-- **Generation**: A new PPTX is dynamically "stitched" together based on the collected slides and AI-enhanced structure.
+## Atomic Reprocessing
 
-## 4. Multi-Provider AI Support
-SlideForge supports dynamic driver switching:
-- **Google Gemini**: Default for multimodal analysis.
-- **OpenAI**: High-precision text extraction.
-- **Anthropic Claude**: Superior reasoning for structural reorganization.
+When a system reset is triggered, SlideForge performs a three-step atomic restoration:
+
+```mermaid
+graph LR
+    DB[(Clear Database)] --> MV[Move Template -> Stage]
+    MV --> SN[Retrigger Observer Scan]
+    SN --> PR((Processing Starts))
+    
+    style DB fill:#f96,stroke:#333
+    style PR fill:#6f6,stroke:#333
+```
+
+## Internal Storage Architecture
+
+SlideForge organizes data into three distinct layers:
+
+1.  **Stage (`/stage`)**: The entry point. Files here are ephemeral and removed after successful processing.
+2.  **Template (`/template`)**: The vault. Processed original files are archived here for reference.
+3.  **Thumbnails (`/thumbnails`)**: The visual cache. Contains rendered images of slides, organized by presentation.
+
+## Core Processing Steps
+1.  **XML Discovery**: Unzips the PPTX package to locate slide definitions.
+2.  **Text Collection**: Extracts human-readable text while maintaining slide order.
+3.  **JSON Mapping**: Converts slide structures into queryable JSON for the database.
+4.  **Visual Imaging**: Generates high-fidelity PNGs for the dashboard.
+5.  **AI Insight**: Triggers multimodal analysis via Gemini or OpenAI.
