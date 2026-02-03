@@ -46,12 +46,13 @@ type AIConfig struct {
 }
 
 type ProviderSettings struct {
-	Driver      string  `mapstructure:"driver"` // gemini, openai, anthropic
-	Key         string  `mapstructure:"key"`
-	Endpoint    string  `mapstructure:"endpoint"`
-	Model       string  `mapstructure:"model"`
-	Temperature float64 `mapstructure:"temperature"`
-	MaxTokens   int     `mapstructure:"max_tokens"`
+	Driver      string   `mapstructure:"driver"` // gemini, openai, anthropic
+	Key         string   `mapstructure:"key"`
+	Endpoint    string   `mapstructure:"endpoint"`
+	Model       string   `mapstructure:"model"`
+	Models      []string `mapstructure:"models"`
+	Temperature float64  `mapstructure:"temperature"`
+	MaxTokens   int      `mapstructure:"max_tokens"`
 }
 
 type LdapConfig struct {
@@ -132,9 +133,9 @@ func LoadConfig() (*Config, error) {
 		{"application.storage.template", "STORAGE_TEMPLATE"},
 		{"application.storage.thumbnails", "STORAGE_THUMBNAILS"},
 
-		// AI Providers
 		{"ai.providers.gemini.key", "GEMINI_KEY"},
 		{"ai.providers.gemini.model", "GEMINI_MODEL"},
+		{"ai.providers.gemini.models", "GEMINI_MODELS"},
 		{"ai.providers.openai.key", "OPENAI_API_KEY"},
 		{"ai.providers.openai.model", "OPENAI_MODEL"},
 		{"ai.providers.claude.key", "ANTHROPIC_API_KEY"},

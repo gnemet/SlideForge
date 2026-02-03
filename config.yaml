@@ -16,9 +16,9 @@ ai:
   providers:
     gemini:
       driver: "gemini"
-      key: "" # Load from GEMINI_KEY environment variable
-      model: "gemini-1.5-flash"
-      models: ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro"]
+      key: "" # Load from environment variable
+      model: "" # Load from GEMINI_MODEL
+      models: [] # Load from GEMINI_MODELS (comma separated)
       temperature: 0.1
     openai:
       driver: "openai"

@@ -8,6 +8,9 @@ import (
 
 	"github.com/gnemet/SlideForge/internal/ai"
 	"github.com/gnemet/SlideForge/internal/config"
+	"github.com/google/generative-ai-go/genai"
+	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
 )
 
 func main() {
@@ -24,6 +27,7 @@ func main() {
 
 	fmt.Printf("Active Provider: %s (Driver: %s)\n", active, settings.Driver)
 	fmt.Printf("Model: %s\n", settings.Model)
+	fmt.Printf("Configured Models: %d (%v)\n", len(settings.Models), settings.Models)
 
 	if settings.Key == "" {
 		fmt.Println("Warning: AI Key is EMPTY. Please set it in config.yaml or as an environment variable (e.g., GEMINI_KEY).")
@@ -47,6 +51,25 @@ func main() {
 	// 4. Call GenerateContent
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	if active == "gemini" {
+		fmt.Println("\n--- Available Gemini Models ---")
+		clientG, _ := genai.NewClient(ctx, option.WithAPIKey(settings.Key))
+		iter := clientG.ListModels(ctx)
+		for {
+			m, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				fmt.Printf("Error listing models: %v\n", err)
+				break
+			}
+			fmt.Printf("- %s\n", m.Name)
+		}
+		clientG.Close()
+		fmt.Println("-------------------------------\n")
+	}
 
 	start := time.Now()
 	response, err := client.GenerateContent(ctx, prompt)
