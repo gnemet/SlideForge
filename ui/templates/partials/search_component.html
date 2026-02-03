@@ -1,0 +1,46 @@
+{{ define "partials/search_component.html" }}
+<!-- Search Section -->
+<div class="search-container">
+    <div class="search-header">
+        <div class="search-title">
+            <h3><i class="fas fa-search"></i> {{T .Lang `content_search` }}</h3>
+        </div>
+
+        <div class="search-settings-pill">
+            <button id="mode-loop-btn" class="mode-btn" onclick="cycleSearchMode()">
+                <i class="fas fa-magic"></i> <span id="mode-label">Full Text (AI)</span>
+            </button>
+            <input type="hidden" name="mode" id="search-mode" value="fts">
+
+            <div id="threshold-control" class="threshold-control hidden">
+                <span class="threshold-label">{{T .Lang `precision` }}</span>
+                <input type="range" min="0.1" max="1.0" step="0.05" value="{{ .SimThreshold }}"
+                    onchange="saveSetting('similarity_threshold', this.value); saveSetting('word_similarity_threshold', this.value)"
+                    title="{{T .Lang `adjust_threshold` }}">
+            </div>
+        </div>
+    </div>
+
+    <div class="search-input-wrapper">
+        <input type="text" name="q" id="search-input" class="search-input-field"
+            placeholder="{{T .Lang `search_placeholder` }}" autocomplete="off" hx-get="/search"
+            hx-trigger="keyup changed delay:500ms" hx-target="#search-results" hx-include="#search-mode">
+        <i class="fas fa-search search-icon-overlay"></i>
+    </div>
+
+    <div id="search-results" class="mt-4">
+        <div class="search-message">
+            <i class="fas fa-layer-group mb-3" style="opacity: 0.3; font-size: 3rem;"></i>
+            <p>{{T .Lang `search_instantly` }}</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.SEARCH_MODES_CONFIG = [
+        { value: 'fts', label: '{{T .Lang `search_mode_fts` }}', title: '{{T .Lang `search_mode_fts_title` }}', icon: 'fa-magic', hasThreshold: false },
+        { value: 'similarity', label: '{{T .Lang `search_mode_similarity` }}', title: '{{T .Lang `search_mode_similarity_title` }}', icon: 'fa-equals', hasThreshold: true },
+        { value: 'word_similarity', label: '{{T .Lang `search_mode_word_similarity` }}', title: '{{T .Lang `search_mode_word_similarity_title` }}', icon: 'fa-font', hasThreshold: true }
+    ];
+</script>
+{{ end }}

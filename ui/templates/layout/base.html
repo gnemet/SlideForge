@@ -1,0 +1,51 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .Title}}{{.Title}}{{else}}Dashboard{{end}} - SlideForge</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/search.css">
+    <link rel="icon" type="image/png" href="/static/images/favicon.png">
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.1"></script>
+    <script src="/static/js/search.js"></script>
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    {{block "extra_css" .}}{{end}}
+</head>
+
+<body>
+    {{template "header" .}}
+
+    <div class="app-layout">
+        {{template "sidebar" .}}
+
+        <main class="main-content">
+            {{block "content" .}}{{end}}
+        </main>
+    </div>
+
+    {{template "footer" .}}
+
+    <script src="/static/js/app.js"></script>
+    {{block "extra_js" .}}{{end}}
+</body>
+
+</html>
+{{end}}

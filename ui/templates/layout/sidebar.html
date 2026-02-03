@@ -1,0 +1,41 @@
+{{define "sidebar"}}
+<aside class="sidebar">
+    <nav class="nav-links">
+        <a href="/dashboard" class="nav-item {{if eq .ActiveNav " dashboard"}}active{{end}}">
+            <i class="fas fa-th-large"></i>
+            <span>{{T .Lang `dashboard` }}</span>
+        </a>
+        <a href="/templates" class="nav-item {{if eq .ActiveNav " templates"}}active{{end}}">
+            <i class="fas fa-file-powerpoint"></i>
+            <span>{{T .Lang `templates` }}</span>
+        </a>
+        <a href="/generator" class="nav-item {{if eq .ActiveNav " generator"}}active{{end}}">
+            <i class="fas fa-magic"></i>
+            <span>{{T .Lang `generator` }}</span>
+        </a>
+        <a href="/meta" class="nav-item {{if eq .ActiveNav " tables"}}active{{end}}">
+            <i class="fas fa-database"></i>
+            <span>{{T .Lang `tables` }}</span>
+        </a>
+        <a href="/archive" class="nav-item {{if eq .ActiveNav " archive"}}active{{end}}">
+            <i class="fas fa-archive"></i>
+            <span>{{T .Lang `archive` }}</span>
+        </a>
+        <a href="/ai-tester" class="nav-item {{if eq .ActiveNav " ai_tester"}}active{{end}}">
+            <i class="fas fa-robot"></i>
+            <span>{{T .Lang `ai_tester` }}</span>
+        </a>
+
+        <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 24px;">
+            <a href="/about" class="nav-item {{if eq .ActiveNav " about"}}active{{end}}">
+                <i class="fas fa-info-circle"></i>
+                <span>{{T .Lang `about` }}</span>
+            </a>
+            <a href="/settings" class="nav-item {{if eq .ActiveNav " settings"}}active{{end}}">
+                <i class="fas fa-cog"></i>
+                <span>{{T .Lang `settings` }}</span>
+            </a>
+        </div>
+    </nav>
+</aside>
+{{end}}

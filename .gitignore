@@ -5,6 +5,6 @@ thumbnails/
 .env
 *.log
 mnt/
-templates
+/template/
+/templates/
 .temp/
-thumbnails/
