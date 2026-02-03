@@ -1,24 +1,31 @@
-# SlideForge Technical Stack
+# 🛠️ Technical Stack: The Foundation of the Foundry
 
-SlideForge follows a minimalist, high-performance architecture similar to other GoBI/Antigravity projects.
+SlideForge is built on a minimalist, high-performance architecture optimized for extreme concurrency and hypermedia-driven interactivity.
 
-## Backend
-- **Language**: GoLang
-- **Frameworks**: None (Vanilla Go)
-- **Persistence**: PostgreSQL 18
-- **Libraries**:
-  - **github.com/russross/blackfriday/v2**: Used for high-performance server-side Markdown-to-HTML rendering.
-- **Conversion Utilities**: 
-  - **LibreOffice 24.2+**: Used for PPTX to PDF and Template processing.
-  - **pdftoppm (poppler-utils)**: Used for high-quality PDF to PNG extraction.
-- **Pattern Reference**: `/home/gnemet/GitHub/datagrid`
+## ⚙️ Backend Engine
+Our backend is a "Pure Go" implementation, avoiding heavy frameworks for maximum execution speed and maintainability.
+-   **Language**: Go (Golang) 1.22+
+-   **Data Storage**: **PostgreSQL 17** with `pgvector` for thematic similarity indexing.
+-   **Core Libraries**:
+    -   `github.com/google/generative-ai-go`: The spinal cord of our AI integration.
+    -   `github.com/russross/blackfriday/v2`: High-speed server-side Markdown rendering.
+-   **Forensic Capture Utilities**:
+    -   **LibreOffice 24.2+ (Headless)**: Precision-grade PPTX decomposition.
+    -   **Poppler (pdftoppm)**: High-fidelity (300dpi) PNG extraction from slide atoms.
 
-## Frontend
-- **Technology**: HTMX (for dynamic partial updates)
-- **Styling**: Standard CSS
-- **Scripting**: Vanilla JavaScript and jQuery
-- **Pattern**: Hypermedia-driven application design.
+## 🎨 Hypermedia Frontend
+We reject "Single Page Application" (SPA) complexity in favor of high-performance Hypermedia.
+-   **Engine**: **HTMX** (Partial DOM swaps for sub-100ms UI responsiveness).
+-   **Styling**: **Premium Vanilla CSS** - No heavy CSS frameworks; just pure tokens, glassmorphism, and hardware-accelerated animations.
+-   **Icons**: **Phosphor Icons / Font Awesome 6** (Pro-grade visual language).
+-   **Interactivity**: **Mermaid JS** for architectural visualization and real-time relationship mapping.
 
-## Infrastructure
-- **Git Repository**: GitHub (`gnemet/SlideForge`)
-- **Development Path**: `/home/gnemet/GitHub/SlideForge`
+## 🌐 Ecosystem & Infrastructure
+-   **AI Integration**: **Digital Blacksmith Engine** (Gemini Multi-Turn Chat Sessions).
+-   **Monitoring**: **Google Cloud Billing API** for real-time financial transparency.
+-   **Configuration**: **Zero-Hardcode YAML** (`config.yaml`) with dynamic environment variable fallback.
+-   **Storage**: **Cloud-Sync Ingestion** via rclone/inotify for atomic PPTX staging.
+
+---
+*2026 | SlideForge Technical Specification*
+*Part of the Antigravity Intelligence Ecosystem*
