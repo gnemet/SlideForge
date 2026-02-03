@@ -4,6 +4,8 @@ trigger: always_on
 
 # PostgreSQL Technical Standards
 
+Don't forget to set search_path when connect to database!
+
 *This file supplements the policies in `antigravity.md`.*
 
 ## 1. Oracle to PostgreSQL Type Mapping

@@ -139,3 +139,15 @@ func GetTotalSlideCount(db *sql.DB) (int, error) {
 	err := db.QueryRow("SELECT COUNT(*) FROM collected_slides").Scan(&count)
 	return count, err
 }
+
+func ClearDatabase(db *sql.DB) error {
+	_, err := db.Exec("DELETE FROM pptx_files")
+	return err
+}
+
+func GetAIInsightCount(db *sql.DB) (int, error) {
+	var count int
+	// Counting slides with AI analysis or summaries
+	err := db.QueryRow("SELECT COUNT(*) FROM collected_slides WHERE ai_summary <> ''").Scan(&count)
+	return count, err
+}

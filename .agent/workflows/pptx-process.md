@@ -25,3 +25,8 @@ Workflow of PPTX processing
 
 ## Observer
 1. listening Stage folder for new files
+
+# Reprocessing
+1. Clear database (all PPTX metrics and slide data)
+2. Move all files from Template folder back to Stage folder
+3. Retrigger observer scan on Stage folder

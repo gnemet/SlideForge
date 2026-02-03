@@ -48,16 +48,23 @@
         const evtSource = new EventSource("/events/status");
         evtSource.onmessage = function (event) {
             const data = JSON.parse(event.data);
-            const terminal = document.getElementById('log-terminal');
-            if (terminal) {
+            const container = document.getElementById('log-terminal');
+            const output = document.getElementById('bg-process-output');
+
+            if (container) {
                 if (data.is_processing) {
-                    terminal.classList.add('visible');
-                    terminal.textContent = data.last_log || "Processing...";
+                    container.classList.add('visible');
+                    container.classList.remove('hidden');
+                    if (data.last_log) {
+                        output.textContent = data.last_log;
+                    }
                 } else {
-                    terminal.classList.remove('visible');
+                    container.classList.add('hidden');
+                    container.classList.remove('visible');
                 }
             }
         };
+
     </script>
 
     <script>

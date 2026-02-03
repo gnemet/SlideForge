@@ -153,7 +153,7 @@ func main() {
 	http.HandleFunc("/reprocess-status", AuthMiddleware(handleReprocessStatus))
 	http.HandleFunc("/search", AuthMiddleware(handleSearch))
 	http.HandleFunc("/search-settings", AuthMiddleware(handleSearchSettings))
-	http.HandleFunc("/events/logs", AuthMiddleware(handleEventsLogs))
+	http.HandleFunc("/events/status", AuthMiddleware(handleEventsStatus))
 
 	port := cfg.Application.Port
 	if port == 0 {
@@ -181,10 +181,12 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Failed to get slide count: %v", err)
 	}
+	insightCount, _ := database.GetAIInsightCount(sqlDB)
 
 	data := getBaseData(r, "Dashboard", "dashboard")
 	data["Files"] = files
 	data["SlideCount"] = slideCount
+	data["InsightCount"] = insightCount
 	data["IsProcessing"] = obs.IsProcessing()
 
 	// Load settings
@@ -200,16 +202,33 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 func handleReprocess(w http.ResponseWriter, r *http.Request) {
 	go obs.ReprocessAll()
 	w.Header().Set("HX-Trigger", "reprocessStarted")
-	w.Write([]byte("Processing started..."))
+
+	lang := i18n.GetLang(r)
+	html := fmt.Sprintf(`
+		<span class="badge bg-warning animate-pulse" style="margin: 0;">%s</span>
+		<i class="fas fa-cog fa-spin text-warning"></i>
+	`, i18n.T(lang, "processing_all"))
+	w.Write([]byte(html))
 }
 
 func handleReprocessStatus(w http.ResponseWriter, r *http.Request) {
 	lang := i18n.GetLang(r)
 	if obs.IsProcessing() {
-		w.Write([]byte(fmt.Sprintf("<span class='badge bg-warning animate-pulse'>%s...</span>", i18n.T(lang, "processing"))))
+		html := fmt.Sprintf(`
+			<span class="badge bg-warning animate-pulse" style="margin: 0;">%s</span>
+			<i class="fas fa-cog fa-spin text-warning"></i>
+		`, i18n.T(lang, "processing_all"))
+		w.Write([]byte(html))
 	} else {
-		btnHtml := fmt.Sprintf("<button hx-post='/reprocess' hx-target='#reprocess-status' class='btn btn-primary btn-sm'><i class='fas fa-sync'></i> %s</button>", i18n.T(lang, "reprocess_all_pptx"))
-		w.Write([]byte(btnHtml))
+		html := fmt.Sprintf(`
+			<div class="stat-value" style="font-size: 1.1rem; color: var(--success-color);">
+				<i class="fas fa-check-circle"></i> %s
+			</div>
+			<button hx-post="/reprocess" hx-target="#reprocess-status" class="btn btn-muted btn-sm" title="%s">
+				<i class="fas fa-sync"></i>
+			</button>
+		`, i18n.T(lang, "system_ready"), i18n.T(lang, "reprocess_all_pptx"))
+		w.Write([]byte(html))
 	}
 }
 
@@ -783,17 +802,12 @@ func processLogs() {
 	}
 }
 
-func handleEventsLogs(w http.ResponseWriter, r *http.Request) {
-	// Set headers for SSE
+func handleEventsStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	// Create client channel
 	clientChan := make(chan string, 10)
-
-	// Register client
 	sseMutex.Lock()
 	sseClients[clientChan] = true
 	sseMutex.Unlock()
@@ -805,21 +819,31 @@ func handleEventsLogs(w http.ResponseWriter, r *http.Request) {
 		close(clientChan)
 	}()
 
-	// Send history
-	logMutex.Lock()
-	for _, msg := range logBuffer {
-		fmt.Fprintf(w, "data: %s\n\n", msg)
-	}
-	logMutex.Unlock()
-	w.(http.Flusher).Flush()
+	flusher, _ := w.(http.Flusher)
 
-	// Stream new messages
+	// Stream updates
 	ctx := r.Context()
 	for {
 		select {
-		case msg := <-clientChan:
-			fmt.Fprintf(w, "data: %s\n\n", msg)
-			w.(http.Flusher).Flush()
+		case logMsg := <-clientChan:
+			data, _ := json.Marshal(map[string]interface{}{
+				"is_processing": obs.IsProcessing(),
+				"last_log":      logMsg,
+			})
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			if flusher != nil {
+				flusher.Flush()
+			}
+		case <-time.After(3 * time.Second):
+			// Heartbeat & Status Update (even if no logs)
+			data, _ := json.Marshal(map[string]interface{}{
+				"is_processing": obs.IsProcessing(),
+				"last_log":      "",
+			})
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			if flusher != nil {
+				flusher.Flush()
+			}
 		case <-ctx.Done():
 			return
 		}

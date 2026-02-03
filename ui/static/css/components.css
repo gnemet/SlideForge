@@ -17,8 +17,8 @@
 /* Stats Grid */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
     margin-bottom: 32px;
 }
 
@@ -29,19 +29,52 @@
     border: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent-color);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+
+.stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: transparent;
+    transition: background 0.3s;
+}
+
+.stat-card:hover::after {
+    background: var(--accent-color);
+}
+
+.stat-card i {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+    opacity: 0.8;
 }
 
 .stat-value {
-    font-size: 2rem;
+    font-size: 2.22rem;
     font-weight: 800;
-    color: var(--accent-color);
+    color: var(--text-color);
+    line-height: 1;
 }
 
 .stat-label {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--text-muted);
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Buttons */
@@ -194,4 +227,44 @@
 
 .hidden {
     display: none !important;
+}
+
+/* Upload Zone */
+.upload-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius);
+    padding: 48px;
+    text-align: center;
+    background: var(--card-bg);
+    margin: 32px 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.upload-zone:hover {
+    border-color: var(--accent-color);
+    background: rgba(var(--accent-rgb), 0.02);
+    transform: scale(1.01);
+}
+
+.upload-icon {
+    font-size: 3rem;
+    color: var(--accent-color);
+    opacity: 0.6;
+    margin-bottom: 8px;
+}
+
+.upload-zone h2 {
+    font-size: 1.25rem;
+    margin: 0;
+}
+
+.upload-zone p {
+    margin: 0;
+    font-size: 0.9rem;
 }

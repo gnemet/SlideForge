@@ -196,22 +196,20 @@ func (o *Observer) processFile(path string) {
 	}
 
 	// Check for existing file by Checksum
-	var existingID int
-	// First check strictly by checksum if valid
+	var fileID int
 	if checksum != "" {
-		err = o.db.QueryRow("SELECT id FROM pptx_files WHERE checksum = $1", checksum).Scan(&existingID)
+		err = o.db.QueryRow("SELECT id FROM pptx_files WHERE checksum = $1", checksum).Scan(&fileID)
 		if err == nil {
-			o.log("File %s (checksum: %s) already exists (ID: %d). Skipping duplicate processing.", filename, checksum, existingID)
-			return // idempotency: don't reprocess identical files
+			o.log("File %s (checksum: %s) already exists (ID: %d). Skipping duplicate processing.", filename, checksum, fileID)
+			o.finalizeFile(path, filename, fileID)
+			return
 		}
 	}
 
-	// Fallback to filename/path check if checksum logic didn't hit (e.g., checksum empty or not found)
-	if existingID == 0 {
-		err = o.db.QueryRow("SELECT id FROM pptx_files WHERE filename = $1 AND original_file_path = $2", filename, path).Scan(&existingID)
-	}
+	// Fallback to filename/path check if checksum logic didn't hit
+	var existingID int
+	err = o.db.QueryRow("SELECT id FROM pptx_files WHERE filename = $1 AND original_file_path = $2", filename, path).Scan(&existingID)
 
-	var fileID int
 	if err == sql.ErrNoRows || existingID == 0 {
 		fileID, err = database.SavePPTXMetadata(o.db, pptxFile)
 		if err != nil {
@@ -316,19 +314,31 @@ func (o *Observer) processFile(path string) {
 	o.log("Successfully processed: %s (Tags: %v)", filename, tags)
 
 	// Move file to Template directory
-	if o.cfg.Application.Storage.Template != "" {
-		newPath := filepath.Join(o.cfg.Application.Storage.Template, filename)
-		err := os.Rename(path, newPath)
-		if err != nil {
-			o.log("Failed to move %s to template folder: %v", filename, err)
-		} else {
-			o.log("Moved %s to %s", filename, newPath)
+	o.finalizeFile(path, filename, fileID)
+}
 
-			// Update database path
-			_, err := o.db.Exec("UPDATE pptx_files SET original_file_path = $1 WHERE id = $2", newPath, fileID)
-			if err != nil {
-				o.log("Failed to update file path in DB: %v", err)
-			}
+func (o *Observer) finalizeFile(path, filename string, fileID int) {
+	if o.cfg.Application.Storage.Template == "" {
+		return
+	}
+
+	newPath := filepath.Join(o.cfg.Application.Storage.Template, filename)
+
+	// If path is already newPath, we are done
+	if path == newPath {
+		return
+	}
+
+	err := os.Rename(path, newPath)
+	if err != nil {
+		o.log("Failed to move %s to template folder: %v", filename, err)
+	} else {
+		o.log("Moved %s to %s", filename, newPath)
+
+		// Update database path
+		_, err := o.db.Exec("UPDATE pptx_files SET original_file_path = $1 WHERE id = $2", newPath, fileID)
+		if err != nil {
+			o.log("Failed to update file path in DB: %v", err)
 		}
 	}
 }
@@ -337,9 +347,37 @@ func (o *Observer) ReprocessAll() {
 	o.incrementTask()
 	defer o.decrementTask()
 
-	stageDir := o.cfg.Application.Storage.Stage
-	o.log("Retriggering full scan of %s", stageDir)
+	o.log("STARTING FULL REPROCESS: Resetting state...")
 
+	// 1. Clear database
+	if err := database.ClearDatabase(o.db); err != nil {
+		o.log("CRITICAL: Failed to clear database during reprocess: %v", err)
+		return
+	}
+
+	stageDir := o.cfg.Application.Storage.Stage
+	templateDir := o.cfg.Application.Storage.Template
+
+	// 2. Move files from Template back to Stage
+	if templateDir != "" && stageDir != "" {
+		files, err := os.ReadDir(templateDir)
+		if err == nil {
+			for _, file := range files {
+				if !file.IsDir() && strings.HasSuffix(strings.ToLower(file.Name()), ".pptx") {
+					oldPath := filepath.Join(templateDir, file.Name())
+					newPath := filepath.Join(stageDir, file.Name())
+					if err := os.Rename(oldPath, newPath); err != nil {
+						o.log("Failed to move %s back to stage: %v", file.Name(), err)
+					} else {
+						o.log("Moved %s back to stage for reprocessing", file.Name())
+					}
+				}
+			}
+		}
+	}
+
+	// 3. Trigger scan
+	o.log("Retriggering full scan of %s", stageDir)
 	o.scanDirectory(stageDir)
 }
 

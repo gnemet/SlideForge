@@ -1,6 +1,37 @@
 /* Base styles: Variables, Reset, Typography, Layout, Notifications */
 
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+}
+
+.animate-slide-up {
+    animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 :root {
+
     --primary-bg: #f8fafc;
     --secondary-bg: #ffffff;
     --card-bg: #ffffff;
@@ -224,19 +255,46 @@ body {
 }
 
 /* Footer */
-/* Footer */
 footer.app-footer {
-    height: 50px;
-    background: var(--secondary-bg);
-    border-top: 1px solid var(--border-color);
+    height: 32px;
+    background: #1e1e2e;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 24px;
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    flex-shrink: 0;
-    z-index: 100;
+    padding: 0 16px;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    z-index: 1000;
+    color: #a9b1d6;
+    font-size: 11px;
+    font-family: 'Inter', sans-serif;
+    box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.footer-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.footer-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.9;
+    white-space: nowrap;
+}
+
+.footer-item i {
+    font-size: 13px;
+    color: #9aa5ce;
+}
+
+.footer-sep {
+    color: rgba(255, 255, 255, 0.1);
+    font-size: 10px;
 }
 
 .footer-terminal {
@@ -244,23 +302,24 @@ footer.app-footer {
     align-items: center;
     gap: 12px;
     flex: 1;
-    max-width: 600px;
-    background: rgba(0, 0, 0, 0.03);
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', monospace;
-    height: 32px;
-}
-
-[data-theme="dark"] .footer-terminal {
+    max-width: 500px;
     background: rgba(255, 255, 255, 0.03);
-    border-color: var(--border-color);
+    padding: 0 12px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    font-family: 'JetBrains Mono', monospace;
+    height: 22px;
+    margin: 0 20px;
+    transition: all 0.3s;
 }
 
-.footer-terminal i {
-    font-size: 1.1rem;
-    color: var(--accent-color);
+.footer-terminal.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.footer-terminal.visible {
+    opacity: 1;
 }
 
 .terminal-display {
@@ -268,6 +327,7 @@ footer.app-footer {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+    font-size: 10px;
 }
 
 .terminal-line {
@@ -279,53 +339,24 @@ footer.app-footer {
     color: var(--success-color);
     margin-right: 8px;
     font-weight: 700;
-    user-select: none;
 }
 
 #bg-process-output {
-    color: var(--text-color);
-    font-size: 0.8rem;
+    color: #7aa2f7;
     opacity: 0.9;
-}
-
-.footer-meta {
-    display: flex;
-    align-items: center;
-    gap: 24px;
-}
-
-.footer-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-}
-
-.footer-item i {
-    font-size: 1rem;
-    color: var(--text-muted);
 }
 
 /* Responsive Footer */
 @media (max-width: 900px) {
     .footer-terminal {
-        max-width: 300px;
+        display: none !important;
     }
 
     .footer-item span {
         display: none;
     }
-
-    .footer-item:hover span {
-        display: block;
-        position: absolute;
-        bottom: 40px;
-        background: var(--card-bg);
-        padding: 4px 8px;
-        border-radius: 4px;
-        box-shadow: var(--shadow);
-    }
 }
+
 
 /* Datagrid Overrides for Theme Consistency */
 [data-theme="dark"] .datagrid-toolbar,
