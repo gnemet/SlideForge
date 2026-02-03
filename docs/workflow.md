@@ -9,6 +9,7 @@ sequenceDiagram
     participant U as User (UI)
     participant S as Stage Folder
     participant O as Observer
+    participant TH as Thumbnails Folder
     participant T as Template (Archive)
     participant D as PostgreSQL
     
@@ -16,7 +17,7 @@ sequenceDiagram
     Note right of S: File Ingest
     O->>S: Detect Change
     O->>S: Unzip & Extract XML
-    O->>S: Render Thumbnails (PNG)
+    O->>TH: Store Rendered PNGs
     O->>D: Save Metadata & JSON
     O->>T: Move Original File
     Note left of T: Finalized
