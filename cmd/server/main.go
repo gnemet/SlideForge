@@ -144,6 +144,7 @@ func main() {
 	http.HandleFunc("/about", AuthMiddleware(handleAbout))
 	http.HandleFunc("/docs/toc", AuthMiddleware(handleDocsTOC))
 	http.HandleFunc("/docs/content", AuthMiddleware(handleDocsContent))
+	http.HandleFunc("/docs/download", AuthMiddleware(handleDocsDownload))
 
 	http.HandleFunc("/login", handleLogin)
 	http.HandleFunc("/login-action", handleLoginAction)
@@ -588,23 +589,42 @@ func handleAbout(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDocsTOC(w http.ResponseWriter, r *http.Request) {
-	files, err := os.ReadDir("docs")
-	if err != nil {
-		http.Error(w, "Failed to read docs", http.StatusInternalServerError)
+	var html strings.Builder
+	html.WriteString("<div id='docs-toc-list'>")
+
+	filepath.Walk("docs", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".md") {
+			relPath, _ := filepath.Rel("docs", path)
+			name := strings.TrimSuffix(info.Name(), ".md")
+			name = strings.Title(strings.ReplaceAll(name, "_", " "))
+
+			// Indent based on depth
+			depth := strings.Count(relPath, string(os.PathSeparator))
+			padding := depth * 15
+
+			html.WriteString(fmt.Sprintf("<a hx-get='/docs/content?file=%s' hx-target='#docs-content-area' style='padding-left: %dpx;'>%s</a>", relPath, 20+padding, name))
+		}
+		return nil
+	})
+
+	html.WriteString("</div>")
+	w.Write([]byte(html.String()))
+}
+
+func handleDocsDownload(w http.ResponseWriter, r *http.Request) {
+	// For now, look for a pre-generated PDF or return a polite message
+	pdfPath := fmt.Sprintf("%s_v%s.pdf", cfg.Application.Name, cfg.Application.Version)
+	if _, err := os.Stat(pdfPath); err == nil {
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", pdfPath))
+		w.Header().Set("Content-Type", "application/pdf")
+		http.ServeFile(w, r, pdfPath)
 		return
 	}
 
-	var html strings.Builder
-	html.WriteString("<div id='docs-toc-list'>")
-	for _, f := range files {
-		if !f.IsDir() && strings.HasSuffix(f.Name(), ".md") {
-			name := strings.TrimSuffix(f.Name(), ".md")
-			name = strings.Title(strings.ReplaceAll(name, "_", " "))
-			html.WriteString(fmt.Sprintf("<a hx-get='/docs/content?file=%s' hx-target='#docs-content-area'>%s</a>", f.Name(), name))
-		}
-	}
-	html.WriteString("</div>")
-	w.Write([]byte(html.String()))
+	http.Error(w, "Documentation PDF not yet generated for this version. Please run 'go run scripts/gen_pdf_docs.go' first.", http.StatusNotFound)
 }
 
 func handleDocsContent(w http.ResponseWriter, r *http.Request) {
