@@ -9,29 +9,37 @@ AI-Powered PPTX Orchestrator for dynamic slide generation and template managemen
 4. **PostgreSQL 18 Integration**: Robust indexing and search for your PPTX collection.
 5. **Modern UI**: Built with Go, HTMX, jQuery, and Phosphor Icons.
 
-## Technology Stack
-- **Backend**: Go (GoLang)
-- **Frontend**: HTMX, Vanilla CSS, JS, jQuery
-- **Database**: PostgreSQL 18
-- **Processing**: LibreOffice, Poppler (pdftoppm)
+## 🚀 Deployment & Distributions
 
-## Prerequisites
-- Go 1.25+
-- LibreOffice (for headless conversion)
-- Poppler-utils (for `pdftoppm`)
-- PostgreSQL 18
+SlideForge is distributed as a **Single-Binary** with all UI assets (templates, CSS, JS) embedded. We provide four pre-configured versions in our [GitHub Releases](https://github.com/gnemet/SlideForge/releases):
 
-## Getting Started
-1. Clone the repository.
-2. Setup your `.env` file with your database URL and AI keys.
-3. Run the migrations:
-   ```bash
-   psql slideforge < database/migrations/001_init.sql
-   ```
-4. Build and run:
-   ```bash
-   ./build_run.sh
-   ```
+1.  **win11online**: Windows 11 version using Google Gemini AI.
+2.  **win11offline**: Windows 11 version using **Local LLM (Ollama)** for air-gapped security.
+3.  **linuxOn**: Linux x64 version using Cloud AI.
+4.  **linuxOff**: Linux x64 version using Local AI.
+
+### 🤖 Local AI (Offline Mode)
+For fully private, offline orchestration:
+1.  Install [Ollama](https://ollama.com).
+2.  Run `ollama pull llama3`.
+3.  Use the **offline** distribution; it is pre-configured to point to `localhost:11434`.
+
+---
+
+## 🛠️ Technology Stack
+- **Engine**: Pure Go Backend (1.25+)
+- **Frontend**: HTMX & Embedded Vanilla CSS (Glassmorphism)
+- **Database**: PostgreSQL 17+ with `pgvector`
+- **Processing**: LibreOffice & Poppler (pdftoppm)
+- **Digital Blacksmith Architecture**: Centralized `config.yaml` and embedded asset orchestration.
+
+## 🏁 Getting Started
+1. **Download** the relevant distribution from the [Releases](https://github.com/gnemet/SlideForge/releases) page.
+2. **Configure**: Update `config.yaml` with your DB credentials.
+3. **Database**: Run the migrations located in `database/migrations/`.
+4. **Launch**:
+   - **Windows**: Run `RUN.bat`
+   - **Linux**: Run `./run.sh`
 
 ## Repository Structure
 - `cmd/server/`: Main application.
