@@ -1,0 +1,23 @@
+{
+    "dashboard": "Dashboard",
+    "templates": "Templates",
+    "generator": "Generator",
+    "archive": "Archive",
+    "about": "About",
+    "settings": "Settings",
+    "sign_in": "Sign In",
+    "sign_out": "Sign Out",
+    "welcome": "Welcome back, Architect.",
+    "username": "Username",
+    "password": "Password",
+    "guest": "Guest",
+    "authorized": "Authorized",
+    "guest_access": "Guest Access",
+    "switch_language": "Switch Language",
+    "toggle_theme": "Toggle Theme",
+    "available_slides": "Available Slides",
+    "filter_presentations": "Filter presentations",
+    "your_collection": "Your Collection",
+    "generate": "Generate Deck",
+    "drag_slides_here": "Drag slides here to build your deck"
+}

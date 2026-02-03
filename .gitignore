@@ -4,3 +4,5 @@ uploads/
 thumbnails/
 .env
 *.log
+mnt/
+templates

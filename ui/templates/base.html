@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SlideForge | AI-Powered PPTX Orchestrator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://unpkg.com/htmx.org@2.0.1"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <!-- Phospor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 </head>
+
 <body>
     <aside class="sidebar">
         <div class="logo">
@@ -57,12 +61,12 @@
 
         <section id="content" class="animate-fade-in">
             <!-- Content will be swapped by HTMX -->
-            {% block content %}{% endblock %}
+            {{ template "content" . }}
         </section>
     </main>
 
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
             function updateTime() {
                 const now = new Date();
                 $('#current-time').text(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -71,7 +75,7 @@
             setInterval(updateTime, 60000);
 
             // Handle Nav Active State
-            $('.nav-item').on('click', function() {
+            $('.nav-item').on('click', function () {
                 $('.nav-item').removeClass('active');
                 $(this).addClass('active');
                 $('#page-title').text($(this).text().trim());
@@ -79,12 +83,13 @@
         });
 
         // HTMX Loading Indicator
-        document.body.addEventListener('htmx:beforeRequest', function() {
+        document.body.addEventListener('htmx:beforeRequest', function () {
             $('#content').css('opacity', '0.5');
         });
-        document.body.addEventListener('htmx:afterRequest', function() {
+        document.body.addEventListener('htmx:afterRequest', function () {
             $('#content').css('opacity', '1');
         });
     </script>
 </body>
+
 </html>

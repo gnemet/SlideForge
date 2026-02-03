@@ -1,0 +1,215 @@
+/* Base styles: Variables, Reset, Typography, Layout, Notifications */
+
+:root {
+    --primary-bg: #f8fafc;
+    --secondary-bg: #ffffff;
+    --card-bg: #ffffff;
+    --accent-color: #6c5ce7;
+    --text-color: #2d3436;
+    --text-muted: #636e72;
+    --border-color: #dfe6e9;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --radius: 12px;
+    --radius-md: 12px;
+    --success-color: #2ecc71;
+    --danger-color: #ff7675;
+    --compact-height: 2.22rem;
+    --bg-hover: rgba(0, 0, 0, 0.05);
+    --bg-header: #ffffff;
+    --bg-sidebar: #f8fafc;
+}
+
+[data-theme="dark"] {
+    --primary-bg: #0f172a;
+    --secondary-bg: #1e293b;
+    --card-bg: #1e293b;
+    --accent-color: #a29bfe;
+    --text-color: #f1f2f6;
+    --text-muted: #a4b0be;
+    --border-color: #334155;
+    --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    --success-color: #26de81;
+    --danger-color: #eb4d4b;
+    --bg-hover: rgba(255, 255, 255, 0.1);
+    --bg-header: #1e293b;
+    --bg-sidebar: #0f172a;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--primary-bg);
+    color: var(--text-color);
+    line-height: 1.5;
+    transition: background 0.3s, color 0.3s;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-top: 60px; /* Space for top-header */
+}
+
+/* Top Header */
+.top-header {
+    height: 60px;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+
+.header-brand-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-separator {
+    color: var(--border-color);
+    font-size: 1.5rem;
+    font-weight: 200;
+    margin: 0 8px;
+}
+
+.header-page-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+.header-spacer {
+    flex: 1;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--accent-color);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.brand-logo {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
+}
+
+/* Layout */
+.app-layout {
+    display: flex;
+    flex: 1;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 260px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border-color);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 60px;
+    height: calc(100vh - 60px);
+    flex-shrink: 0;
+    z-index: 999;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: var(--text-color);
+    text-decoration: none;
+    border-radius: var(--radius);
+    margin-bottom: 4px;
+    transition: all 0.2s;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.nav-item i {
+    font-size: 1.25rem;
+    width: 24px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.nav-item:hover,
+.nav-item.active {
+    background: rgba(108, 92, 231, 0.1);
+    color: var(--accent-color);
+}
+
+.nav-item:hover i,
+.nav-item.active i {
+    color: var(--accent-color);
+}
+
+.main-content {
+    flex: 1;
+    padding: 32px;
+    overflow-y: auto;
+}
+
+/* Notification & Toast */
+.toast-notification {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--secondary-bg);
+    color: var(--text-color);
+    padding: 12px 24px;
+    border-radius: var(--radius);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    z-index: 9999;
+    border-left: 4px solid var(--accent-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.toast-notification.fade-out {
+    opacity: 0;
+    transform: translateX(20px);
+    transition: all 0.5s ease;
+}
+
+/* Footer */
+footer {
+    height: 60px;
+    background: var(--secondary-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    padding: 0 24px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.footer-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}

@@ -1,63 +1,79 @@
+{{template "base" .}}
+
+{{ define "content" }}
 <div class="stats-grid">
     <div class="stat-card">
-        <i class="ph ph-files text-muted"></i>
-        <div class="stat-value">24</div>
+        <i class="fas fa-file-powerpoint text-muted"></i>
+        <div class="stat-value">{{ len .Files }}</div>
         <div class="stat-label">Total PPTX Files</div>
     </div>
-    <div class="stat-card">
-        <i class="ph ph-layout text-muted"></i>
-        <div class="stat-value">12</div>
-        <div class="stat-label">Templates Ready</div>
+    <div class="stat-card" id="reprocess-container">
+        <div id="reprocess-status">
+            {{ if .IsProcessing }}
+            <span class="badge bg-warning animate-pulse">Processing All PPTX...</span>
+            {{ else }}
+            <button hx-post="/reprocess" hx-target="#reprocess-status" class="btn btn-primary btn-sm">
+                <i class="fas fa-sync"></i> {{T .Lang "reprocess_all_pptx"}}
+            </button>
+            {{ end }}
+        </div>
+        <div class="stat-label" style="margin-top: 0.5rem;">Background Pipeline</div>
+        <div hx-get="/reprocess-status" hx-trigger="every 3s" hx-target="#reprocess-status"></div>
     </div>
     <div class="stat-card">
-        <i class="ph ph-sparkle text-muted"></i>
+        <i class="fas fa-bolt text-muted"></i>
         <div class="stat-value">158</div>
         <div class="stat-label">AI Insights</div>
     </div>
     <div class="stat-card">
-        <i class="ph ph-download-simple text-muted"></i>
+        <i class="fas fa-layer-group text-muted"></i>
+        <div class="stat-value">{{ .SlideCount }}</div>
+        <div class="stat-label">Total Slides</div>
+    </div>
+    <div class="stat-card">
+        <i class="fas fa-download text-muted"></i>
         <div class="stat-value">42</div>
         <div class="stat-label">Exports Generated</div>
     </div>
 </div>
 
+<!-- Search Section Payload -->
+{{ template "partials/search_component.html" . }}
+
 <div class="upload-zone" id="drop-zone">
-    <i class="ph ph-cloud-arrow-up upload-icon"></i>
+    <i class="fas fa-cloud-upload-alt upload-icon"></i>
     <h2>Drag & Drop PPTX Files</h2>
     <p class="text-muted">Or click to browse your computer (Max 50MB)</p>
     <input type="file" id="file-input" style="display: none;" accept=".pptx">
     <button class="btn btn-primary" style="margin-top: 1.5rem;" onclick="$('#file-input').click()">
-        <i class="ph ph-plus"></i> Select Files
+        <i class="fas fa-plus"></i> Select Files
     </button>
 </div>
 
 <h3>Recent Files</h3>
 <div class="pptx-grid" style="margin-top: 1.5rem;">
-    <!-- Mock Data -->
-    <div class="pptx-card">
+    {{ range .Files }}
+    <div class="pptx-card" onclick="window.location='/selection?fileID={{ .ID }}'">
         <div class="thumbnail">
-            <img src="https://images.unsplash.com/photo-1557804506-669a67965ba0?w=500" alt="Thumbnail">
+            <!-- First slide as thumbnail or placeholder -->
+            <img src="/thumbnails/{{ .ThumbnailDirPath }}/slide-0001.png" alt="{{ .Filename }}"
+                onerror="this.src='https://images.unsplash.com/photo-1557804506-669a67965ba0?w=500'">
         </div>
         <div class="card-info">
-            <div class="card-title">Corporate_Strategy_2025.pptx</div>
+            <div class="card-title">{{ if .Title }}{{ .Title }}{{ else }}{{ stripExt .Filename }}{{ end }}</div>
             <div class="card-meta">
-                <span>12 Slides</span>
-                <span>2m ago</span>
+                <span>{{ .CreatedAt.Format "2006.01.02" }}</span>
+                {{ if .IsTemplate }}
+                <span class="badge"
+                    style="background: var(--accent); padding: 2px 8px; border-radius: 10px; font-size: 10px;">TEMPLATE</span>
+                {{ end }}
             </div>
         </div>
     </div>
-    <div class="pptx-card">
-        <div class="thumbnail">
-            <img src="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=500" alt="Thumbnail">
-        </div>
-        <div class="card-info">
-            <div class="card-title">Marketing_Pitch_v2.pptx</div>
-            <div class="card-meta">
-                <span>8 Slides</span>
-                <span>1h ago</span>
-            </div>
-        </div>
-    </div>
+    {{ end }}
+    {{ if not .Files }}
+    <p class="text-muted">No files uploaded yet. Drag one above!</p>
+    {{ end }}
 </div>
 
 <script>
@@ -90,3 +106,4 @@
         }
     }
 </script>
+{{ end }}

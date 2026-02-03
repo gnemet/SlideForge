@@ -1,0 +1,23 @@
+{
+    "dashboard": "Irányítópult",
+    "templates": "Sablonok",
+    "generator": "Generátor",
+    "archive": "Archívum",
+    "about": "Névjegy",
+    "settings": "Beállítások",
+    "sign_in": "Bejelentkezés",
+    "sign_out": "Kijelentkezés",
+    "welcome": "Üdvözöljük újra, Architect.",
+    "username": "Felhasználónév",
+    "password": "Jelszó",
+    "guest": "Vendég",
+    "authorized": "Hitelesítve",
+    "guest_access": "Vendég hozzáférés",
+    "switch_language": "Nyelvváltás",
+    "toggle_theme": "Téma váltása",
+    "available_slides": "Elérhető diák",
+    "filter_presentations": "Prezentációk szűrése",
+    "your_collection": "Saját gyűjtemény",
+    "generate": "Deck generálása",
+    "drag_slides_here": "Húzza ide a diákat a pakli összeállításához"
+}
