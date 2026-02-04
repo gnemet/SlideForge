@@ -32,6 +32,7 @@ $(document).ready(function () {
     initGlobalEvents();
     initUserMenu();
     initTerminalObserver();
+    initSidebar();
 });
 
 function initTheme() {
@@ -120,4 +121,24 @@ function initTerminalObserver() {
             output.style.color = 'var(--text-color)';
         }, 500);
     };
+}
+
+function initSidebar() {
+    // Restore state
+    const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar && isCollapsed) {
+        sidebar.classList.add('collapsed');
+    }
+
+    // Toggle logic
+    $(document).on('click', '#sidebar-toggle', function (e) {
+        e.preventDefault();
+        const sidebar = document.querySelector('.sidebar');
+        if (!sidebar) return;
+
+        sidebar.classList.toggle('collapsed');
+        const collapsed = sidebar.classList.contains('collapsed');
+        localStorage.setItem('sidebar-collapsed', collapsed);
+    });
 }

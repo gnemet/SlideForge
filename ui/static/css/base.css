@@ -148,7 +148,6 @@ body {
 .app-layout {
     display: flex;
     flex: 1;
-    margin-top: 60px;
 }
 
 /* Sidebar */
@@ -164,6 +163,28 @@ body {
     height: calc(100vh - 60px);
     flex-shrink: 0;
     z-index: 999;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed {
+    width: 72px;
+    padding: 24px 8px;
+}
+
+.sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 12px 0;
+    gap: 0;
+}
+
+.sidebar.collapsed .nav-item span,
+.sidebar.collapsed .nav-links div span {
+    display: none;
+}
+
+.sidebar.collapsed .nav-links div {
+    padding-top: 24px !important;
+    text-align: center;
 }
 
 .nav-item {
@@ -180,6 +201,36 @@ body {
     white-space: nowrap;
     overflow: hidden;
     cursor: pointer;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle-btn {
+    position: absolute;
+    top: 20px;
+    right: -14px;
+    width: 28px;
+    height: 28px;
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    z-index: 1001;
+    color: var(--text-color);
+    transition: all 0.3s ease;
+}
+
+.sidebar-toggle-btn:hover {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.sidebar.collapsed .sidebar-toggle-btn i {
+    transform: rotate(180deg);
 }
 
 .nav-item i {
