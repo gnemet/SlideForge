@@ -8,8 +8,9 @@ mnt/
 /template/
 /templates/
 .temp/
-opt/envs/
+opt/envs/.env_*
 opt/*.json
 
 # 🛡️ Vault (Encrypted secrets)
+# This allows *.gpg files everywhere, including inside opt/envs/
 !*.gpg
