@@ -1,0 +1,114 @@
+{{template "base" .}}
+
+{{ define "content" }}
+<div class="content-header animate-fade-in">
+    <div class="header-left">
+        <i class="fas fa-home text-accent" style="font-size: 1.8rem;"></i>
+        <div>
+            <h1 class="text-accent">{{T .Lang `welcome` }}</h1>
+            <p class="text-muted">{{T .Lang `overview_presentations` }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="stats-grid animate-slide-up">
+
+    <div class="stat-card">
+        <i class="fas fa-file-powerpoint text-accent"></i>
+        <div class="stat-value" id="total-pptx-count">{{ len .Files }}</div>
+        <div class="stat-label">{{T .Lang `total_pptx_files` }}</div>
+    </div>
+
+    <div class="stat-card" id="reprocess-container">
+        <div id="reprocess-status"
+            style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            {{ if .IsProcessing }}
+            <span class="badge bg-warning animate-pulse" style="margin: 0;">
+                {{T .Lang `processing_all` }}
+                {{ if .CurrentFile }}({{ .CurrentFile }} - {{ .TotalQueued }} left){{ end }}
+                <span id="process-duration"></span>
+            </span>
+            <i class="fas fa-cog fa-spin text-warning"></i>
+            {{ else }}
+            <div class="stat-value" style="font-size: 1.1rem; color: var(--success-color);">
+                <i class="fas fa-check-circle"></i> {{T .Lang `system_ready` }}
+            </div>
+            <button onclick="confirmReprocess('{{ len .Files }}')"
+                class="btn {{ if gt (len .Files) 10 }}btn-danger{{ else }}btn-muted{{ end }} btn-sm"
+                title="{{T .Lang `reprocess_all_pptx` }}">
+                <i class="fas fa-sync"></i>
+            </button>
+            {{ end }}
+        </div>
+        <div class="stat-label" style="margin-top: auto;">{{T .Lang `background_pipeline` }}</div>
+        <div hx-get="/reprocess-status" hx-trigger="every 3s" hx-target="#reprocess-status"></div>
+    </div>
+    <div class="stat-card">
+        <i class="fas fa-layer-group text-accent"></i>
+        <div class="stat-value">{{ .SlideCount }}</div>
+        <div class="stat-label">{{T .Lang `total_slides` }}</div>
+    </div>
+
+    <div class="stat-card" style="cursor: pointer;" onclick="document.querySelector('.ai-status-badge').click()">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <i class="fas fa-bolt text-accent"></i>
+            <div class="stat-badge {{.AIStatusClass}}"
+                style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase;">
+                {{.AIStatus}}
+            </div>
+        </div>
+        <div class="stat-value">{{ .InsightCount }}</div>
+        <div class="stat-label">{{T .Lang `ai_insights` }}</div>
+    </div>
+
+</div>
+
+<!-- Search Section Payload -->
+{{ template "partials/search_component.html" . }}
+
+<div class="upload-zone" id="drop-zone">
+    <i class="fas fa-cloud-upload-alt upload-icon"></i>
+    <h2>{{T .Lang `drag_drop_pptx` }}</h2>
+    <p class="text-muted">{{T .Lang `click_browse_computer` }}</p>
+    <input type="file" id="file-input" style="display: none;" accept=".pptx">
+    <button class="btn btn-primary" style="margin-top: 1.5rem;" onclick="$('#file-input').click()">
+        <i class="fas fa-plus-circle"></i> {{T .Lang `select_files` }}
+    </button>
+</div>
+
+<h3 style="margin-top: 2rem;">{{T .Lang `recent_files` }}</h3>
+<div id="recent-files-grid" hx-get="/recent-files" hx-trigger="refreshFiles from:body">
+    {{ template "partials/recent_files.html" . }}
+</div>
+
+<script>
+    $('#drop-zone').on('dragover', function (e) {
+        e.preventDefault();
+        $(this).css('border-color', 'var(--primary)');
+    }).on('dragleave', function () {
+        $(this).css('border-color', 'var(--border)');
+    }).on('drop', function (e) {
+        e.preventDefault();
+        $(this).css('border-color', 'var(--border)');
+        const files = e.originalEvent.dataTransfer.files;
+        handleFileUpload(files);
+    });
+
+    $('#file-input').on('change', function () {
+        handleFileUpload(this.files);
+    });
+
+    function handleFileUpload(files) {
+        if (files.length > 0) {
+            const formData = new FormData();
+            formData.append('file', files[0]);
+
+            // htmx manual trigger or use ajax
+            htmx.ajax('POST', '/upload', {
+                values: formData,
+                target: '#content'
+            });
+        }
+    }
+</script>
+{{ end }}

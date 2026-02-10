@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -38,21 +39,28 @@ type StorageConfig struct {
 	Thumbnails string `mapstructure:"thumbnails"`
 	Stage      string `mapstructure:"stage"`
 	Template   string `mapstructure:"template"`
+	Local      string `mapstructure:"local"`
+	Remote     string `mapstructure:"remote"`
 }
 
 type AIConfig struct {
+	Enabled        bool                        `mapstructure:"enabled"`
 	ActiveProvider string                      `mapstructure:"active_provider"`
 	Providers      map[string]ProviderSettings `mapstructure:"providers"`
 }
 
 type ProviderSettings struct {
-	Driver      string   `mapstructure:"driver"` // gemini, openai, anthropic
-	Key         string   `mapstructure:"key"`
-	Endpoint    string   `mapstructure:"endpoint"`
-	Model       string   `mapstructure:"model"`
-	Models      []string `mapstructure:"models"`
-	Temperature float64  `mapstructure:"temperature"`
-	MaxTokens   int      `mapstructure:"max_tokens"`
+	Driver           string   `mapstructure:"driver"` // gemini, openai, anthropic
+	Key              string   `mapstructure:"key"`
+	Endpoint         string   `mapstructure:"endpoint"`
+	Model            string   `mapstructure:"model"`
+	Models           []string `mapstructure:"models"`
+	Type             string   `mapstructure:"type"` // legacy
+	Temperature      float64  `mapstructure:"temperature"`
+	MaxTokens        int      `mapstructure:"max_tokens"`
+	IsPaid           bool     `mapstructure:"is_paid"`
+	InputPricePer1M  float64  `mapstructure:"input_price_per_1m"`
+	OutputPricePer1M float64  `mapstructure:"output_price_per_1m"`
 }
 
 type LdapConfig struct {
@@ -126,16 +134,23 @@ func LoadConfig() (*Config, error) {
 		{"application.port", "PORT"},
 		{"application.authentication", "AUTH_ENABLED"},
 		{"application.auth_type", "AUTH_TYPE"},
+		{"ai.enabled", "AI_ENABLED"},
 		{"ai.active_provider", "AI_PROVIDER"},
 
 		// Storage
+		{"application.storage.original", "STORAGE_ORIGINAL"},
 		{"application.storage.stage", "STORAGE_STAGE"},
 		{"application.storage.template", "STORAGE_TEMPLATE"},
 		{"application.storage.thumbnails", "STORAGE_THUMBNAILS"},
+		{"application.storage.local", "STORAGE_LOCAL"},
+		{"application.storage.remote", "STORAGE_REMOTE"},
 
 		{"ai.providers.gemini.key", "GEMINI_KEY"},
 		{"ai.providers.gemini.model", "GEMINI_MODEL"},
 		{"ai.providers.gemini.models", "GEMINI_MODELS"},
+		{"ai.providers.gemini.is_paid", "GEMINI_IS_PAID"},
+		{"ai.providers.gemini.input_price_per_1m", "GEMINI_PRICE_IN"},
+		{"ai.providers.gemini.output_price_per_1m", "GEMINI_PRICE_OUT"},
 		{"ai.providers.openai.key", "OPENAI_API_KEY"},
 		{"ai.providers.openai.model", "OPENAI_MODEL"},
 		{"ai.providers.claude.key", "ANTHROPIC_API_KEY"},
@@ -160,6 +175,7 @@ func LoadConfig() (*Config, error) {
 
 	// Defaults
 	viper.SetDefault("application.authentication", true)
+	viper.SetDefault("ai.enabled", true)
 	viper.SetDefault("ldap.enabled", false)
 	viper.SetDefault("ldap.host", "ldap.alig.hu")
 	viper.SetDefault("ldap.port", 389)
@@ -179,5 +195,22 @@ func LoadConfig() (*Config, error) {
 		cfg.AI.ActiveProvider = "gemini"
 	}
 
+	// Expand environment variables in storage paths recursively
+	cfg.Application.Storage.Original = expandRecursive(cfg.Application.Storage.Original)
+	cfg.Application.Storage.Thumbnails = expandRecursive(cfg.Application.Storage.Thumbnails)
+	cfg.Application.Storage.Stage = expandRecursive(cfg.Application.Storage.Stage)
+	cfg.Application.Storage.Template = expandRecursive(cfg.Application.Storage.Template)
+	cfg.Application.Storage.Local = expandRecursive(cfg.Application.Storage.Local)
+	cfg.Application.Storage.Remote = expandRecursive(cfg.Application.Storage.Remote)
+
 	return &cfg, nil
+}
+
+func expandRecursive(s string) string {
+	last := ""
+	for s != last {
+		last = s
+		s = os.ExpandEnv(s)
+	}
+	return s
 }

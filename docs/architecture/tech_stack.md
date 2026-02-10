@@ -21,7 +21,7 @@ We reject "Single Page Application" (SPA) complexity in favor of high-performanc
 -   **Interactivity**: **Mermaid JS** for architectural visualization and real-time relationship mapping.
 
 ## 🌐 Ecosystem & Infrastructure
--   **AI Integration**: **Digital Blacksmith Engine** (Gemini Multi-Turn Chat Sessions).
+-   **AI Integration**: **Digital Blacksmith Engine** (Gemini Multi-Turn Chat Sessions). Implements a **Persona-based Instruction system** (Presentation Architect) for architectural consistency and high-fidelity extraction.
 -   **Monitoring**: **Google Cloud Billing API** for real-time financial transparency.
 -   **Configuration**: **Zero-Hardcode YAML** (`config.yaml`) with dynamic environment variable fallback.
 -   **Storage**: **Cloud-Sync Ingestion** via rclone/inotify for atomic PPTX staging.

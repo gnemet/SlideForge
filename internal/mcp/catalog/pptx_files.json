@@ -15,7 +15,10 @@
         "columns": {
             "id": {
                 "visible": true,
-                "icon": "hash",
+                "icon": "hashtag",
+                "labels": {
+                    "en": "ID"
+                },
                 "width": 80
             },
             "filename": {
@@ -44,6 +47,12 @@
                     "en": "Imported"
                 },
                 "width": 180
+            },
+            "original_file_path": {
+                "visible": true,
+                "labels": {
+                    "en": "Path"
+                }
             }
         }
     },
@@ -73,6 +82,10 @@
                 {
                     "name": "created_at",
                     "type": "TIMESTAMP"
+                },
+                {
+                    "name": "original_file_path",
+                    "type": "TEXT"
                 }
             ]
         }

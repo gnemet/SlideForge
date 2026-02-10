@@ -1,0 +1,169 @@
+{{template "base" .}}
+{{define "extra_css"}}
+<link rel="stylesheet" href="/static/css/generator.css">
+<link rel="stylesheet" href="/static/css/generator_ux.css">
+<style>
+    .pane-header .search-input {
+        width: 180px;
+        padding: 6px 10px;
+        font-size: 0.85rem;
+        height: 32px;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--border-color);
+    }
+
+    [data-theme="dark"] .pane-header .search-input {
+        background: rgba(255, 255, 255, 0.05);
+    }
+</style>
+{{end}}
+
+{{define "content"}}
+<div class="generator-container">
+    <!-- Source Pane -->
+    <div class="pane">
+        <div class="pane-header">
+            <h3>{{T .Lang `available_slides` }}</h3>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <input type="text" id="ppt-search" class="search-input"
+                    placeholder="{{T .Lang `filter_presentations` }}..." autocomplete="off">
+                <span class="badge" id="source-count" data-suffix="{{T .Lang `slides_suffix` }}"
+                    data-pptx-suffix="{{T .Lang `pptx_suffix` }}">0 {{T .Lang `slides_suffix` }}</span>
+            </div>
+        </div>
+        <div class="tree-view" id="source-tree">
+            {{template "file_tree_node" dict "Node" .FileTree "Lang" .Lang}}
+        </div>
+    </div>
+
+    <!-- Target Pane -->
+    <div class="pane">
+        <div class="pane-header">
+            <h3>{{T .Lang `your_collection` }}</h3>
+            <div class="div-buttons" style="display: flex; gap: 8px;">
+                <!-- Danger Actions Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-muted btn-sm" id="danger-menu-btn" title="{{T .Lang `danger_actions` }}">
+                        <i class="fas fa-exclamation-triangle text-danger"></i>
+                    </button>
+                    <div class="dropdown-content" id="danger-menu-content">
+                        <div class="dropdown-item" onclick="removeSelected()">
+                            <i class="fas fa-minus-square"></i> {{T .Lang `remove_selected` }}
+                        </div>
+                        <div class="dropdown-item" onclick="clearCollection()">
+                            <i class="fas fa-trash"></i> {{T .Lang `clean_all` }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Action -->
+                <button class="btn btn-primary btn-sm" onclick="generateFromCollection()"
+                    title="{{T .Lang `generate` }}">
+                    <i class="fas fa-magic"></i>
+                </button>
+            </div>
+        </div>
+        <div class="tree-view" id="collection-target">
+            <div class="collection-empty">
+                <i class="fas fa-mouse-pointer opacity-50 mb-16" style="font-size: 2rem;"></i>
+                <p>{{T .Lang `drag_slides_here` }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="overlay-backdrop" id="preview-backdrop" onclick="closePreview()"></div>
+<div class="preview-overlay" id="preview-modal">
+    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
+        <h4 id="preview-title">{{T .Lang `slide_preview` }}</h4>
+        <button class="btn btn-muted btn-sm" onclick="closePreview()"><i class="fas fa-times"></i></button>
+    </div>
+    <img src="" id="preview-img">
+</div>
+
+<!-- Metadata Modal -->
+<div class="overlay-backdrop" id="meta-backdrop" onclick="closeMeta()"></div>
+<div class="preview-overlay resizable" id="meta-modal" style="width: 500px; height: 400px;">
+    <div class="modal-drag-handle" onmousedown="initModalDrag(event, 'meta-modal')">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="margin: 0;"><i class="fas fa-info-circle"></i> {{T .Lang `slide_metadata` }}</h4>
+            <button class="btn btn-muted btn-sm" onclick="closeMeta()"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+    <div class="meta-content">
+        <label class="text-accent" style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">{{T
+            .Lang `ai_summary_label` }}</label>
+        <div id="meta-summary" class="mb-16" style="font-size: 0.95rem; line-height: 1.5;"></div>
+
+        <label class="text-accent" style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 4px;">{{T
+            .Lang `raw_content_label` }}</label>
+        <div id="meta-raw"
+            style="font-size: 0.85rem; color: var(--text-muted); background: var(--bg-color); padding: 12px; border-radius: 6px; max-height: 200px; overflow-y: auto;">
+        </div>
+    </div>
+</div>
+
+<!-- Context Menu -->
+<div id="context-menu">
+    <div class="context-menu-item" onclick="handleContextAction('preview')">
+        <i class="fas fa-eye"></i> {{T .Lang `preview` }}
+    </div>
+    <div class="context-menu-item" onclick="handleContextAction('meta')">
+        <i class="fas fa-info-circle"></i> {{T .Lang `metadata` }}
+    </div>
+    <div class="context-menu-item" onclick="handleContextAction('json')">
+        <i class="fas fa-code"></i> {{T .Lang `json_data` }}
+    </div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" onclick="handleContextAction('add')">
+        <i class="fas fa-plus"></i> {{T .Lang `add_to_collection` }}
+    </div>
+    <div class="context-menu-item" onclick="handleContextAction('remove')">
+        <i class="fas fa-trash"></i> {{T .Lang `remove` }}
+    </div>
+</div>
+{{end}}
+
+{{define "file_tree_node"}}
+{{$lang := .Lang}}
+{{range $name, $node := .Node.Children}}
+<div class="tree-folder">
+    <div class="folder-header" onclick="toggleFolder(this, event)">
+        <i class="fas fa-chevron-right chevron"></i>
+        <i class="fas fa-folder text-accent"></i>
+        <span>{{$name}}</span>
+    </div>
+    <div class="folder-content" style="display: none; padding-left: 20px;">
+        {{template "file_tree_node" dict "Node" $node "Lang" $lang}}
+    </div>
+</div>
+{{end}}
+{{range .Node.Files}}
+<div class="tree-node" data-filename="{{ stripExt .Filename }}" data-tags="{{.Metadata}}">
+    <div class="ppt-node" onclick="toggleNode(this, event)" draggable="true" data-type="pptx" data-id="{{.ID}}">
+        <i class="fas fa-chevron-right chevron"></i>
+        <i class="fas fa-file-powerpoint text-accent"></i>
+        <span>{{ if .Title }}{{ .Title }}{{ else }}{{ stripExt .Filename }}{{ end }}</span>
+    </div>
+    <div class="slides-container" id="slides-{{.ID}}">
+        {{range .Slides}}
+        <div class="slide-item" draggable="true" data-id="{{.ID}}" data-path="{{.PNGPath}}"
+            data-summary="{{.AISummary}}" data-content="{{.Content}}" onclick="handleSlideClick(this, event)">
+            <img src="{{.PNGPath}}" class="slide-thumb-small">
+            <div class="slide-info">
+                <span>{{ if .Title }}{{ .Title }}{{ else }}{{T $lang "slide_num"}} {{ .SlideNum }}{{ end
+                    }}</span>
+            </div>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{end}}
+{{end}}
+
+{{define "extra_js"}}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script src="/static/js/generator.js"></script>
+{{end}}

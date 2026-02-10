@@ -15,7 +15,10 @@
         "columns": {
             "id": {
                 "visible": true,
-                "icon": "hash",
+                "icon": "hashtag",
+                "labels": {
+                    "en": "ID"
+                },
                 "width": 80
             },
             "pptx_file_id": {
@@ -50,6 +53,12 @@
                     "en": "Processed"
                 },
                 "width": 180
+            },
+            "png_path": {
+                "visible": true,
+                "labels": {
+                    "en": "Path"
+                }
             }
         }
     },
@@ -83,6 +92,10 @@
                 {
                     "name": "created_at",
                     "type": "TIMESTAMP"
+                },
+                {
+                    "name": "png_path",
+                    "type": "TEXT"
                 }
             ]
         }

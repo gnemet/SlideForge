@@ -5,6 +5,7 @@ go 1.25.6
 replace github.com/gnemet/datagrid => /home/gnemet/GitHub/datagrid
 
 require (
+	cloud.google.com/go/billing v1.21.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/gnemet/datagrid v1.2.0
 	github.com/google/generative-ai-go v0.20.1
@@ -13,6 +14,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/viper v1.21.0
 	google.golang.org/api v0.264.0
+	google.golang.org/genproto v0.0.0-20260203192932-546029d2fa20
 )
 
 require (
@@ -20,7 +22,6 @@ require (
 	cloud.google.com/go/ai v0.8.0 // indirect
 	cloud.google.com/go/auth v0.18.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
-	cloud.google.com/go/billing v1.21.0 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	cloud.google.com/go/iam v1.5.3 // indirect
 	cloud.google.com/go/longrunning v0.8.0 // indirect
@@ -54,7 +55,6 @@ require (
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	google.golang.org/genproto v0.0.0-20260203192932-546029d2fa20 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/grpc v1.78.0 // indirect

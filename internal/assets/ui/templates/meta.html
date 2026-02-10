@@ -1,0 +1,164 @@
+{{template "base" .}}
+{{define "extra_css"}}
+<link rel="stylesheet" href="/static/css/generator.css">
+<style>
+    .meta-layout-v2 {
+        padding: 24px;
+        margin-top: 12px;
+    }
+
+    .group-header {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+        margin-top: 40px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .group-header:first-of-type {
+        margin-top: 0;
+    }
+
+    .tiles-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 20px;
+    }
+
+    .tile-card {
+        aspect-ratio: 2.8 / 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 20px;
+        border-radius: 4px;
+        text-decoration: none;
+        color: white;
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .tile-card:hover {
+        transform: scale(1.03);
+        filter: contrast(1.1) brightness(1.1);
+        z-index: 10;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .tile-card i.main-icon {
+        font-size: 3rem;
+        opacity: 0.9;
+    }
+
+    .tile-card span {
+        font-size: 0.95rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Colors defined in catalog, but we keep fallback utility classes */
+    .tile-dark-blue {
+        background: linear-gradient(135deg, #001f3f, #003366);
+    }
+
+    .tile-forest {
+        background: linear-gradient(135deg, #3d9970, #2ecc40);
+    }
+
+    .tile-orange {
+        background: linear-gradient(135deg, #ff851b, #ff4136);
+    }
+
+    .tile-teal {
+        background: linear-gradient(135deg, #39cccc, #7fdbff);
+    }
+
+    .tile-purple {
+        background: linear-gradient(135deg, #b10dc9, #6c5ce7);
+    }
+
+    .tile-card .tile-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .tile-card .divider {
+        width: 1px;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.15);
+        margin-left: auto;
+        margin-right: 20px;
+    }
+
+    .tile-card .arrow-box {
+        display: flex;
+        align-items: center;
+        height: 60px;
+    }
+
+    .tile-card .arrow-box i {
+        font-size: 0.8rem;
+        opacity: 0.5;
+        transform: rotate(-90deg);
+    }
+</style>
+{{end}}
+
+{{define "content"}}
+<div class="meta-page-v2 animate-fade-in">
+    <div class="content-header">
+        <div class="header-left">
+            <h1><i class="fas fa-database text-accent"></i> {{T .Lang `table_management` }}</h1>
+        </div>
+    </div>
+
+    <div class="meta-layout-v2">
+        {{ $currentGroup := "" }}
+        {{ range .Catalogs }}
+        {{ if ne .Type $currentGroup }}
+        {{ if ne $currentGroup "" }}</div>{{ end }}
+    <div class="group-header">
+        <i class="fas fa-layer-group text-accent" style="font-size: 0.7rem; opacity: 0.5;"></i>
+        {{ .Type }}
+    </div>
+    <div class="tiles-grid">
+        {{ $currentGroup = .Type }}
+        {{ end }}
+
+        <a href="/resource?code={{.Code}}" class="tile-card {{ .CSSClass }}">
+            <div class="tile-top">
+                {{if .Icon}}
+                <i class="main-icon {{if contains .Icon `fa-`}}{{.Icon}}{{else}}fas fa-{{.Icon}}{{end}}"></i>
+                {{else}}
+                <div style="height: 3rem;"></div>
+                {{end}}
+                <div class="divider"></div>
+                <div class="arrow-box">
+                    <i class="fas fa-caret-down"></i>
+                </div>
+            </div>
+            <span>{{.Title}}</span>
+        </a>
+        {{ else }}
+        <div class="empty-state">
+            <p class="text-muted">{{T .Lang `no_catalogs_found` }}</p>
+        </div>
+        {{ end }}
+        {{ if ne $currentGroup "" }}
+    </div>{{ end }}
+</div>
+</div>
+{{end}}

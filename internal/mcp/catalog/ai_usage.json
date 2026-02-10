@@ -1,0 +1,117 @@
+{
+    "version": "1.0",
+    "title": "AI Usage Tracking",
+    "icon": "coins",
+    "type": "Billing",
+    "css_class": "tile-lavender",
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25
+            ],
+            "sort_column": "id",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "id": {
+                "visible": true,
+                "icon": "hashtag",
+                "labels": {
+                    "en": "ID"
+                },
+                "width": 80
+            },
+            "provider": {
+                "visible": true,
+                "labels": {
+                    "en": "Provider"
+                },
+                "width": 120
+            },
+            "model": {
+                "visible": true,
+                "labels": {
+                    "en": "Model"
+                },
+                "width": 150
+            },
+            "prompt_tokens": {
+                "visible": true,
+                "labels": {
+                    "en": "Prompt"
+                },
+                "width": 100
+            },
+            "completion_tokens": {
+                "visible": true,
+                "labels": {
+                    "en": "Compl."
+                },
+                "width": 100
+            },
+            "total_tokens": {
+                "visible": true,
+                "labels": {
+                    "en": "Total"
+                },
+                "width": 100
+            },
+            "cost": {
+                "visible": true,
+                "labels": {
+                    "en": "Cost ($)"
+                },
+                "width": 120
+            },
+            "created_at": {
+                "visible": true,
+                "labels": {
+                    "en": "Time"
+                },
+                "width": 180
+            }
+        }
+    },
+    "objects": [
+        {
+            "name": "slideforge.ai_usage",
+            "type": "table",
+            "description": "AI token consumption and cost logs.",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "INTEGER",
+                    "primary_key": true
+                },
+                {
+                    "name": "provider",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "model",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "prompt_tokens",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "completion_tokens",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "total_tokens",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "cost",
+                    "type": "NUMERIC(15,10)"
+                },
+                {
+                    "name": "created_at",
+                    "type": "TIMESTAMP"
+                }
+            ]
+        }
+    ]
+}

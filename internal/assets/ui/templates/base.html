@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{if .Title}}{{.Title}} | {{end}}SlideForge</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/htmx.org@2.0.1"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/static/images/favicon.png">
+</head>
+
+<body>
+    {{template "sidebar" .}}
+
+    <div class="app-container">
+        {{template "header" .}}
+
+        <main class="app-layout">
+            <div id="content-area">
+                {{template "content" .}}
+            </div>
+        </main>
+
+        {{template "footer" .}}
+    </div>
+
+    <!-- SSE Status Listener -->
+    <script>
+        const evtSource = new EventSource("/events/status");
+        evtSource.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            const container = document.getElementById('log-terminal');
+            const output = document.getElementById('bg-process-output');
+
+            if (container) {
+                if (data.is_processing) {
+                    container.classList.add('visible');
+                    container.classList.remove('hidden');
+                    if (data.last_log) {
+                        output.textContent = data.last_log;
+                    }
+                } else {
+                    container.classList.add('hidden');
+                    container.classList.remove('visible');
+                }
+            }
+        };
+
+    </script>
+
+    <script>
+        $(document).ready(function () {
+            // HTMX Loading Indicator logic
+            document.body.addEventListener('htmx:beforeRequest', function () {
+                $('#content-area').css('opacity', '0.6');
+            });
+            document.body.addEventListener('htmx:afterRequest', function () {
+                $('#content-area').css('opacity', '1');
+            });
+        });
+    </script>
+</body>
+
+</html>

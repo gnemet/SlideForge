@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gnemet/SlideForge"
 	"github.com/gnemet/SlideForge/internal/ai"
+	"github.com/gnemet/SlideForge/internal/assets"
 	"github.com/gnemet/SlideForge/internal/config"
 	"github.com/gnemet/SlideForge/internal/database"
 	"github.com/gnemet/SlideForge/internal/i18n"
@@ -90,7 +90,7 @@ func main() {
 	os.MkdirAll("uploads", 0755)
 	os.MkdirAll("thumbnails", 0755)
 
-	i18nFS, _ := fs.Sub(SlideForge.EmbeddedAssets, "resources")
+	i18nFS, _ := fs.Sub(assets.EmbeddedAssets, "resources")
 	i18n.Init(i18nFS)
 
 	// Templates - Parse layout and datagrid templates
@@ -107,6 +107,20 @@ func main() {
 		"contains": func(s, substr string) bool {
 			return strings.Contains(s, substr)
 		},
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("invalid dict call")
+			}
+			dict := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict keys must be strings")
+				}
+				dict[key] = values[i+1]
+			}
+			return dict, nil
+		},
 	}
 	// Merge Datagrid Template Funcs (renderRow, etc.)
 	for k, v := range datagrid.TemplateFuncs() {
@@ -114,7 +128,7 @@ func main() {
 	}
 
 	// Load templates from embedded FS
-	tmpl = template.Must(template.New("").Funcs(funcMap).ParseFS(SlideForge.EmbeddedAssets, "ui/templates/layout/*.html", "ui/templates/partials/*.html"))
+	tmpl = template.Must(template.New("").Funcs(funcMap).ParseFS(assets.EmbeddedAssets, "ui/templates/layout/*.html", "ui/templates/partials/*.html"))
 	// Automagically include all datagrid library templates
 	tmpl = template.Must(tmpl.ParseFS(datagrid.UIAssets, "ui/templates/partials/datagrid/*.html"))
 
@@ -126,7 +140,7 @@ func main() {
 	}, datagrid.DatagridConfig{})
 
 	// Static files - Preferred from embedded FS for portability
-	staticUI, _ := fs.Sub(SlideForge.EmbeddedAssets, "ui/static")
+	staticUI, _ := fs.Sub(assets.EmbeddedAssets, "ui/static")
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticUI))))
 
 	http.Handle("/thumbnails/", http.StripPrefix("/thumbnails/", http.FileServer(http.Dir(cfg.Application.Storage.Thumbnails))))
@@ -161,6 +175,7 @@ func main() {
 	http.HandleFunc("/reprocess-status", AuthMiddleware(handleReprocessStatus))
 	http.HandleFunc("/search", AuthMiddleware(handleSearch))
 	http.HandleFunc("/search-settings", AuthMiddleware(handleSearchSettings))
+	http.HandleFunc("/recent-files", AuthMiddleware(handleRecentFiles))
 	http.HandleFunc("/events/status", AuthMiddleware(handleEventsStatus))
 
 	port := cfg.Application.Port
@@ -195,16 +210,36 @@ func handleDashboard(w http.ResponseWriter, r *http.Request) {
 	data["Files"] = files
 	data["SlideCount"] = slideCount
 	data["InsightCount"] = insightCount
-	data["IsProcessing"] = obs.IsProcessing()
+
+	isProcessing, currentFile, totalQueued, startTime := obs.GetStatus()
+	data["IsProcessing"] = isProcessing
+	data["CurrentFile"] = currentFile
+	data["TotalQueued"] = totalQueued
+	if isProcessing {
+		data["StartTime"] = startTime.Unix()
+	}
 
 	// Load settings
-	var simThreshold, wordSimThreshold float64
+	var simThreshold, wordSimThreshold, aiEnabled float64
 	sqlDB.QueryRow("SELECT value FROM search_settings WHERE key = 'similarity_threshold'").Scan(&simThreshold)
 	sqlDB.QueryRow("SELECT value FROM search_settings WHERE key = 'word_similarity_threshold'").Scan(&wordSimThreshold)
+	sqlDB.QueryRow("SELECT value FROM search_settings WHERE key = 'ai_insights_enabled'").Scan(&aiEnabled)
 	data["SimThreshold"] = simThreshold
 	data["WordSimThreshold"] = wordSimThreshold
+	data["AIInsightsEnabled"] = aiEnabled > 0.5 || (aiEnabled == 0 && cfg.AI.Enabled) // Default to config if missing
 
 	renderTemplate(w, "dashboard.html", data)
+}
+
+func handleRecentFiles(w http.ResponseWriter, r *http.Request) {
+	files, err := database.GetAllPPTX(sqlDB)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	data := getBaseData(r, "", "")
+	data["Files"] = files
+	renderTemplate(w, "partials/recent_files.html", data)
 }
 
 func handleReprocess(w http.ResponseWriter, r *http.Request) {
@@ -221,11 +256,16 @@ func handleReprocess(w http.ResponseWriter, r *http.Request) {
 
 func handleReprocessStatus(w http.ResponseWriter, r *http.Request) {
 	lang := i18n.GetLang(r)
-	if obs.IsProcessing() {
+	isProcessing, currentFile, totalQueued, _ := obs.GetStatus()
+	if isProcessing {
+		statusText := i18n.T(lang, "processing_all")
+		if currentFile != "" {
+			statusText = fmt.Sprintf("%s (%s - %d left)", statusText, currentFile, totalQueued)
+		}
 		html := fmt.Sprintf(`
 			<span class="badge bg-warning animate-pulse" style="margin: 0;">%s</span>
 			<i class="fas fa-cog fa-spin text-warning"></i>
-		`, i18n.T(lang, "processing_all"))
+		`, statusText)
 		w.Write([]byte(html))
 	} else {
 		html := fmt.Sprintf(`
@@ -294,7 +334,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 
 		rows, err = sqlDB.Query(fmt.Sprintf(`
 			SELECT s.id, s.pptx_file_id, s.slide_number, s.png_path, s.content, f.filename,
-			       ts_headline('%s', s.content, websearch_to_tsquery('%s', $1), 'StartSel=<mark>, StopSel=</mark>, MaxWords=35, MinWords=15') as snippet, s.title
+			       ts_headline('%s', s.content || ' ' || s.comments, websearch_to_tsquery('%s', $1), 'StartSel=<mark>, StopSel=</mark>, MaxWords=35, MinWords=15') as snippet, s.title
 			FROM collected_slides s
 			JOIN pptx_files f ON s.pptx_file_id = f.id
 			WHERE s.%s @@ websearch_to_tsquery('%s', $1) OR f.%s @@ websearch_to_tsquery('%s', $1)
@@ -337,7 +377,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	<div class='search-results-grid'>
 		{{range .Results}}
 		<div class='search-result-card' onclick="window.location='/selection?fileID={{.FileID}}'">
-			<img src='{{.PNGPath}}' loading='lazy'>
+			<img src='/{{.PNGPath}}' loading='lazy'>
 			<div class='result-info'>
 				<strong>{{stripExt .Filename}}</strong> - {{ if .Title }}{{ .Title }}{{ else }}Slide {{.SlideNumber}}{{ end }}
 				<p class='content-snippet'>{{.Snippet}}</p>
@@ -373,7 +413,7 @@ func handleSearchSettings(w http.ResponseWriter, r *http.Request) {
 func renderTemplate(w http.ResponseWriter, name string, data interface{}) {
 	t := template.Must(tmpl.Clone())
 	// Try to find the specific template in embedded FS
-	_, err := t.ParseFS(SlideForge.EmbeddedAssets, "ui/templates/"+name)
+	_, err := t.ParseFS(assets.EmbeddedAssets, "ui/templates/"+name)
 	if err != nil {
 		log.Printf("Template parse error (%s): %v", name, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -436,6 +476,11 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	var slideSummaries []string
 	ctx := r.Context()
 
+	// Check if AI is enabled globally and in settings
+	var aiEnabledVal float64
+	sqlDB.QueryRow("SELECT value FROM search_settings WHERE key = 'ai_insights_enabled'").Scan(&aiEnabledVal)
+	aiEnabled := aiEnabledVal > 0.5 || (aiEnabledVal == 0 && cfg.AI.Enabled)
+
 	// Save individual slides
 	for i, png := range pngFiles {
 		slideNum := i + 1
@@ -451,26 +496,49 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Generate slide summary & title
-			if content != "" {
+			if content != "" && aiEnabled {
 				// Summary
-				summary, err := aiClient.SummarizeText(ctx, content)
+				result, err := aiClient.SummarizeText(ctx, content)
 				if err == nil {
-					slideSummary = summary
-					slideSummaries = append(slideSummaries, summary)
+					slideSummary = result.Content
+					slideSummaries = append(slideSummaries, result.Content)
+					// Log usage
+					database.LogAIUsage(sqlDB, &database.AIUsage{
+						Provider:         cfg.AI.ActiveProvider,
+						Model:            cfg.AI.Providers[cfg.AI.ActiveProvider].Model,
+						PromptTokens:     result.Usage.PromptTokens,
+						CompletionTokens: result.Usage.CompletionTokens,
+						TotalTokens:      result.Usage.TotalTokens,
+						Cost:             result.Cost,
+					})
 				}
 
 				// Title
-				rawTitle, err := aiClient.ExtractSlideTitle(ctx, content)
-				if err == nil && rawTitle != "" {
-					slideTitle = fmt.Sprintf("%d. %s", slideNum, rawTitle)
+				rawTitleResult, err := aiClient.ExtractSlideTitle(ctx, content)
+				if err == nil && rawTitleResult.Content != "" {
+					slideTitle = fmt.Sprintf("%d. %s", slideNum, rawTitleResult.Content)
+					// Log usage
+					database.LogAIUsage(sqlDB, &database.AIUsage{
+						Provider:         cfg.AI.ActiveProvider,
+						Model:            cfg.AI.Providers[cfg.AI.ActiveProvider].Model,
+						PromptTokens:     rawTitleResult.Usage.PromptTokens,
+						CompletionTokens: rawTitleResult.Usage.CompletionTokens,
+						TotalTokens:      rawTitleResult.Usage.TotalTokens,
+						Cost:             rawTitleResult.Cost,
+					})
 				}
 			}
 		}
 
+		// The `png` variable already contains the full path relative to the web root, e.g., "thumbnails/filename/slide_X.png"
+		// So, we just need to ensure it's slash-separated.
+		// Ensure all thumbnail paths start with 'thumbnails/'
+		relPNGPath, _ := filepath.Rel(thumbDir, png)
+		thumbSubPath := filepath.Base(thumbDir) // This is header.Filename
 		err = database.SaveSlide(sqlDB, &database.Slide{
 			PPTXFileID: fileID,
 			SlideNum:   slideNum,
-			PNGPath:    "/" + png, // Web accessible path
+			PNGPath:    filepath.ToSlash(filepath.Join("thumbnails", thumbSubPath, relPNGPath)),
 			Content:    content,
 			StyleInfo:  styleJSON,
 			AIAnalysis: []byte("{}"),
@@ -483,19 +551,37 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate overall summary & title
-	if len(slideSummaries) > 0 {
+	if len(slideSummaries) > 0 && aiEnabled {
 		// Summary
 		fullTextForSummary := strings.Join(slideSummaries, "\n")
-		overallSummary, err := aiClient.SummarizeText(ctx, "Provide a concise summary of this presentation based on its slide summaries: \n"+fullTextForSummary)
+		overallSummaryResult, err := aiClient.SummarizeText(ctx, "Provide a concise summary of this presentation based on its slide summaries: \n"+fullTextForSummary)
 		if err == nil {
-			database.UpdatePPTXSummary(sqlDB, fileID, overallSummary)
+			database.UpdatePPTXSummary(sqlDB, fileID, overallSummaryResult.Content)
+			// Log usage
+			database.LogAIUsage(sqlDB, &database.AIUsage{
+				Provider:         cfg.AI.ActiveProvider,
+				Model:            cfg.AI.Providers[cfg.AI.ActiveProvider].Model,
+				PromptTokens:     overallSummaryResult.Usage.PromptTokens,
+				CompletionTokens: overallSummaryResult.Usage.CompletionTokens,
+				TotalTokens:      overallSummaryResult.Usage.TotalTokens,
+				Cost:             overallSummaryResult.Cost,
+			})
 		}
 
 		// Title (from first slide)
 		if data, ok := slideDataMap[1]; ok && data.Text != "" {
-			title, err := aiClient.ExtractTitle(ctx, data.Text)
-			if err == nil && title != "" {
-				database.UpdatePPTXTitle(sqlDB, fileID, title)
+			titleResult, err := aiClient.ExtractTitle(ctx, data.Text)
+			if err == nil && titleResult.Content != "" {
+				database.UpdatePPTXTitle(sqlDB, fileID, titleResult.Content)
+				// Log usage
+				database.LogAIUsage(sqlDB, &database.AIUsage{
+					Provider:         cfg.AI.ActiveProvider,
+					Model:            cfg.AI.Providers[cfg.AI.ActiveProvider].Model,
+					PromptTokens:     titleResult.Usage.PromptTokens,
+					CompletionTokens: titleResult.Usage.CompletionTokens,
+					TotalTokens:      titleResult.Usage.TotalTokens,
+					Cost:             titleResult.Cost,
+				})
 			}
 		}
 	}
@@ -506,6 +592,9 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 
 func handleSelection(w http.ResponseWriter, r *http.Request) {
 	fileIDStr := r.URL.Query().Get("fileID")
+	if fileIDStr == "" {
+		fileIDStr = r.URL.Query().Get("id")
+	}
 	var fileID int
 	fmt.Sscanf(fileIDStr, "%d", &fileID)
 
@@ -515,7 +604,16 @@ func handleSelection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := getBaseData(r, "Slide Selection", "dashboard")
+	// Fetch PPTX title/filename for header
+	var pptxTitle, filename string
+	err = sqlDB.QueryRow("SELECT title, filename FROM pptx_files WHERE id = $1", fileID).Scan(&pptxTitle, &filename)
+	if err != nil {
+		pptxTitle = "Slide Selection"
+	} else if pptxTitle == "" {
+		pptxTitle = filename
+	}
+
+	data := getBaseData(r, pptxTitle, "dashboard")
 	data["slides"] = slides
 	data["FileID"] = fileID
 
@@ -540,6 +638,16 @@ func handleAnalyze(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	fileIDStr := r.FormValue("fileID")
 	selectedSlides := r.Form["selectedSlides"]
+
+	// Check if AI is enabled
+	var aiEnabledVal float64
+	sqlDB.QueryRow("SELECT value FROM search_settings WHERE key = 'ai_insights_enabled'").Scan(&aiEnabledVal)
+	aiEnabled := aiEnabledVal > 0.5 || (aiEnabledVal == 0 && cfg.AI.Enabled)
+
+	if !aiEnabled {
+		w.Write([]byte("<p class='text-warning'>AI operations are currently disabled. Please turn AI ON in the header to use this feature.</p>"))
+		return
+	}
 
 	if len(selectedSlides) == 0 {
 		w.Write([]byte("<p class='text-warning'>No slides selected for analysis.</p>"))
@@ -575,13 +683,57 @@ func handleAnalyze(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	analysis, err := aiClient.AnalyzeSlide(r.Context(), strings.TrimPrefix(selectedPath, "/"))
+	analysisResult, err := aiClient.AnalyzeSlide(r.Context(), strings.TrimPrefix(selectedPath, "/"))
 	if err != nil {
 		w.Write([]byte(fmt.Sprintf("<p class='text-danger'>AI Analysis failed: %v</p>", err)))
 		return
 	}
 
-	w.Write([]byte(fmt.Sprintf("<div class='animate-fade-in'>%s</div>", analysis)))
+	// Log usage
+	database.LogAIUsage(sqlDB, &database.AIUsage{
+		Provider:         cfg.AI.ActiveProvider,
+		Model:            cfg.AI.Providers[cfg.AI.ActiveProvider].Model,
+		PromptTokens:     analysisResult.Usage.PromptTokens,
+		CompletionTokens: analysisResult.Usage.CompletionTokens,
+		TotalTokens:      analysisResult.Usage.TotalTokens,
+		Cost:             analysisResult.Cost,
+	})
+
+	w.Write([]byte(fmt.Sprintf("<div class='animate-fade-in'>%s</div>", analysisResult.Content)))
+}
+
+type FileNode struct {
+	Name     string
+	Files    []database.PPTXWithSlides
+	Children map[string]*FileNode
+}
+
+func buildFileTree(files []database.PPTXWithSlides) *FileNode {
+	root := &FileNode{Name: "Root", Children: make(map[string]*FileNode)}
+
+	for _, f := range files {
+		// Use original_file_path to determine hierarchy
+		path := f.OriginalFilePath
+		// Try to make it relative to some common roots if possible,
+		// but for now let's just use the path parts.
+		// We'll strip the common prefix if we can identify it.
+
+		// For SlideForge, let's try to strip the absolute prefix until /mnt/bdo/ or just use the last few segments
+		parts := strings.Split(filepath.Dir(path), string(os.PathSeparator))
+
+		currentNode := root
+		for _, part := range parts {
+			if part == "" || part == "home" || part == "gnemet" || part == "GitHub" || part == "SlideForge" || part == "mnt" || part == "bdo" {
+				continue
+			}
+			if _, ok := currentNode.Children[part]; !ok {
+				currentNode.Children[part] = &FileNode{Name: part, Children: make(map[string]*FileNode)}
+			}
+			currentNode = currentNode.Children[part]
+		}
+		currentNode.Files = append(currentNode.Files, f)
+	}
+	return root
 }
 
 func handleGenerator(w http.ResponseWriter, r *http.Request) {
@@ -591,8 +743,11 @@ func handleGenerator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tree := buildFileTree(files)
+
 	data := getBaseData(r, "Slide Generator", "generator")
 	data["Files"] = files
+	data["FileTree"] = tree
 	renderTemplate(w, "generator.html", data)
 }
 
@@ -629,12 +784,34 @@ func handleAIChat(w http.ResponseWriter, r *http.Request) {
 	userHtml := fmt.Sprintf(`<div class="message user">%s</div>`, template.HTMLEscapeString(prompt))
 
 	// 2. Call AI
+	// Check if AI is enabled
+	var aiEnabledVal float64
+	sqlDB.QueryRow("SELECT value FROM search_settings WHERE key = 'ai_insights_enabled'").Scan(&aiEnabledVal)
+	aiEnabled := aiEnabledVal > 0.5 || (aiEnabledVal == 0 && cfg.AI.Enabled)
+
+	if !aiEnabled {
+		w.Write([]byte(userHtml + `<div class="message ai">AI operations are currently disabled. Please turn AI ON in the header.</div>`))
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 	defer cancel()
 
-	response, err := aiClient.GenerateContent(ctx, prompt)
+	result, err := aiClient.GenerateContent(ctx, ai.PresentationArchitect, prompt)
+	var response string
 	if err != nil {
 		response = fmt.Sprintf("Error: %v", err)
+	} else {
+		response = result.Content
+		// Log usage
+		database.LogAIUsage(sqlDB, &database.AIUsage{
+			Provider:         cfg.AI.ActiveProvider,
+			Model:            cfg.AI.Providers[cfg.AI.ActiveProvider].Model,
+			PromptTokens:     result.Usage.PromptTokens,
+			CompletionTokens: result.Usage.CompletionTokens,
+			TotalTokens:      result.Usage.TotalTokens,
+			Cost:             result.Cost,
+		})
 	}
 
 	// 3. Render AI Response snippet
@@ -751,14 +928,35 @@ func getBaseData(r *http.Request, title string, activeNav string) map[string]int
 		dbName = cfg.Database.DBName
 	}
 
+	allTimeCost, _ := database.GetTotalAICost(sqlDB)
+
+	isProcessing, _, _, _ := obs.GetStatus()
+
+	var aiEnabledVal float64
+	sqlDB.QueryRow("SELECT value FROM search_settings WHERE key = 'ai_insights_enabled'").Scan(&aiEnabledVal)
+	aiInsightsEnabled := aiEnabledVal > 0.5 || (aiEnabledVal == 0 && cfg.AI.Enabled)
+
+	aiStatus := "Off"
+	if aiInsightsEnabled {
+		aiStatus = "Unaccess"
+		activeProvider := cfg.AI.Providers[cfg.AI.ActiveProvider]
+		if activeProvider.Key != "" || activeProvider.Driver == "mock" {
+			aiStatus = "Live"
+		}
+	}
+
 	return map[string]interface{}{
-		"Title":        title,
-		"ActiveNav":    activeNav,
-		"Lang":         lang,
-		"LangsJSON":    string(langsJSON),
-		"IsAuth":       authUser != "",
-		"UserName":     userName,
-		"IsProcessing": obs.IsProcessing(),
+		"Title":             title,
+		"ActiveNav":         activeNav,
+		"Lang":              lang,
+		"LangsJSON":         string(langsJSON),
+		"IsAuth":            authUser != "",
+		"UserName":          userName,
+		"IsProcessing":      isProcessing,
+		"AllTimeAICost":     allTimeCost,
+		"AIInsightsEnabled": aiInsightsEnabled,
+		"AIStatus":          aiStatus,
+		"AIStatusClass":     strings.ToLower(aiStatus),
 		"App": map[string]string{
 			"Name":       appName,
 			"Version":    version,
@@ -903,8 +1101,12 @@ func handleEventsStatus(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case logMsg := <-clientChan:
+			isProcessing, currentFile, totalQueued, startTime := obs.GetStatus()
 			data, _ := json.Marshal(map[string]interface{}{
-				"is_processing": obs.IsProcessing(),
+				"is_processing": isProcessing,
+				"current_file":  currentFile,
+				"total_queued":  totalQueued,
+				"start_time":    startTime.Unix(),
 				"last_log":      logMsg,
 			})
 			fmt.Fprintf(w, "data: %s\n\n", data)
@@ -913,8 +1115,12 @@ func handleEventsStatus(w http.ResponseWriter, r *http.Request) {
 			}
 		case <-time.After(3 * time.Second):
 			// Heartbeat & Status Update (even if no logs)
+			isProcessing, currentFile, totalQueued, startTime := obs.GetStatus()
 			data, _ := json.Marshal(map[string]interface{}{
-				"is_processing": obs.IsProcessing(),
+				"is_processing": isProcessing,
+				"current_file":  currentFile,
+				"total_queued":  totalQueued,
+				"start_time":    startTime.Unix(),
 				"last_log":      "",
 			})
 			fmt.Fprintf(w, "data: %s\n\n", data)

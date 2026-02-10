@@ -3,8 +3,8 @@
 ## 1. Core Behavior
 - **Proactive Execution**: Do not ask for permission to run tests, build scripts, or SQL. 
 - **Integrity**: Never modify "copied" files (check source/origin before editing). 
-- **Environment Awareness**: Always read `.env` from the project root using the `config` package.
-- **Documentation**: Keep `README.md` and requirements updated.
+- **Environment Awareness**: Always read `.env` from the project root. Supporting host-specific environments via `opt/envs/.env_*` and `build_run.sh`.
+- **Documentation**: All technical changes MUST be reflected in the `docs/` folder (e.g. `architecture/`, `implementation/`) before any commit or push.
 
 ## 2. PostgreSQL Master Policies
 - **Idempotency**: All DDL MUST be idempotent (`CREATE OR REPLACE`, `IF NOT EXISTS`, `DROP ... CASCADE`).

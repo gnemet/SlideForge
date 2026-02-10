@@ -36,6 +36,16 @@ fi
 
 # 2. Mount Google Drive Business/BDO
 MOUNT_DIR="./mnt/bdo"
+
+# Antigravity Robust Mount Pattern: Detect broken FUSE endpoints early
+if mountpoint -q "$MOUNT_DIR" 2>/dev/null; then
+    if ! ls "$MOUNT_DIR" >/dev/null 2>&1; then
+        echo "Detected broken mount at $MOUNT_DIR (Transport endpoint is not connected). Force unmounting..."
+        fusermount -uz "$MOUNT_DIR" || umount -l "$MOUNT_DIR"
+        sleep 1
+    fi
+fi
+
 mkdir -p "$MOUNT_DIR"
 if ! mountpoint -q "$MOUNT_DIR"; then
     echo "Mounting Google Drive Business/BDO to $MOUNT_DIR..."
@@ -43,15 +53,15 @@ if ! mountpoint -q "$MOUNT_DIR"; then
     # Wait for mount to stabilize
     sleep 2
 else
-    echo "Google Drive already mounted at $MOUNT_DIR"
+    echo "Google Drive already mounted and accessible at $MOUNT_DIR"
 fi
 
 # 3. Link application directories to the mount (Antigravity Library Pattern)
 # Use env vars from the loaded .env file, or fallback defaults if something is missing.
 
-STAGE_PATH=${STORAGE_STAGE:-"./mnt/bdo/stage"}
-TEMPLATE_PATH=${STORAGE_TEMPLATE:-"./mnt/bdo/template"}
-THUMB_PATH=${STORAGE_THUMBNAILS:-"./mnt/bdo/thumbnails"}
+STAGE_PATH=${STORAGE_STAGE:-"./storage/uploads"}
+TEMPLATE_PATH=${STORAGE_TEMPLATE:-"./storage/template"}
+THUMB_PATH=${STORAGE_THUMBNAILS:-"./storage/thumbnails"}
 
 manage_link() {
     local target=$1

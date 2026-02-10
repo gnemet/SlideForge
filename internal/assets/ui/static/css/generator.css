@@ -1,0 +1,276 @@
+.generator-container {
+    display: flex;
+    gap: 24px;
+    height: calc(100vh - 120px);
+    overflow: hidden;
+}
+
+.pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.pane-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-wrapper {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    color: var(--text-color);
+}
+
+.tree-view {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.tree-node {
+    user-select: none;
+}
+
+.ppt-node {
+    padding: 8px 16px;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s;
+}
+
+.ppt-node:active {
+    cursor: grabbing;
+}
+
+.ppt-node:hover {
+    background: var(--hover-color);
+}
+
+.ppt-node i.chevron {
+    width: 16px;
+    transition: transform 0.2s;
+}
+
+.ppt-node.expanded i.chevron {
+    transform: rotate(90deg);
+}
+
+.slides-container {
+    display: none;
+    padding-left: 32px;
+}
+
+.ppt-node.expanded+.slides-container {
+    display: block;
+}
+
+.slide-item {
+    padding: 8px 12px;
+    margin: 4px 16px;
+    border-radius: 6px;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+.slide-item:hover {
+    border-color: var(--accent-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.slide-item.selected {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--primary-color);
+    position: relative;
+}
+
+.slide-item.selected::after {
+    content: '\f058';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 8px;
+    color: var(--primary-color);
+}
+
+.slide-thumb-small {
+    width: 40px;
+    height: 24px;
+    object-fit: cover;
+    border-radius: 2px;
+}
+
+.slide-info {
+    font-size: 0.9rem;
+}
+
+/* Drag & Drop Feedback */
+.sortable-ghost {
+    opacity: 0.4;
+    background: var(--accent-color) !important;
+}
+
+.preview-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    background: var(--card-bg);
+    padding: 32px;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: none;
+    max-width: 90vw;
+    max-height: 90vh;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+}
+
+.preview-overlay.active {
+    display: block;
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+.preview-overlay img {
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.overlay-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 999;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.collection-empty {
+    padding: 40px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+/* Dropdown Menu Styles */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 5px);
+    background: var(--card-bg);
+    min-width: 200px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    z-index: 10000;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+    animation: fadeIn 0.15s ease-out;
+}
+
+.dropdown-item {
+    color: var(--text-color);
+    padding: 12px 20px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.dropdown-item:hover {
+    background-color: var(--hover-color);
+    color: var(--accent-color);
+}
+
+.dropdown:hover .dropdown-content {
+    display: block !important;
+}
+
+.text-danger {
+    color: #ff7675 !important;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+/* Recursive Folder Styles */
+.tree-folder {
+    user-select: none;
+}
+
+.folder-header {
+    padding: 8px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s;
+}
+
+.folder-header:hover {
+    background: var(--hover-color);
+}
+
+.folder-header i.chevron {
+    width: 16px;
+    transition: transform 0.2s;
+}
+
+.folder-header.expanded i.chevron {
+    transform: rotate(90deg);
+}
+
+.folder-content {
+    display: none;
+    padding-left: 20px;
+}

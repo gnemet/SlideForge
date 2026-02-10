@@ -1,0 +1,16 @@
+{{template "base" .}}
+
+{{define "extra_css"}}
+<link rel="stylesheet" href="/ui/static/css/datagrid.css">
+<link rel="stylesheet" href="/static/css/resource_manager.css">
+{{end}}
+
+{{define "content"}}
+<div class="host-integrated">
+    {{template "datagrid_wrapper" .}}
+</div>
+{{end}}
+
+{{define "extra_js"}}
+<script src="/ui/static/js/datagrid.js"></script>
+{{end}}

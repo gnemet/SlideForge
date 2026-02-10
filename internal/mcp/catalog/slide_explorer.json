@@ -1,0 +1,104 @@
+{
+    "version": "1.2",
+    "title": "Slide Explorer",
+    "icon": "search-plus",
+    "type": "Analysis",
+    "css_class": "tile-teal",
+    "datagrid": {
+        "defaults": {
+            "page_size": [
+                25
+            ],
+            "sort_column": "id",
+            "sort_direction": "desc"
+        },
+        "columns": {
+            "id": {
+                "visible": true,
+                "icon": "hashtag",
+                "labels": {
+                    "en": "ID"
+                },
+                "width": 80
+            },
+            "filename": {
+                "visible": true,
+                "labels": {
+                    "en": "File"
+                },
+                "width": 200
+            },
+            "pptx_title": {
+                "visible": true,
+                "labels": {
+                    "en": "PPTX Title"
+                },
+                "width": 200
+            },
+            "slide_number": {
+                "visible": true,
+                "labels": {
+                    "en": "Pg"
+                },
+                "width": 60
+            },
+            "slide_title": {
+                "visible": true,
+                "labels": {
+                    "en": "Slide Title"
+                }
+            },
+            "content": {
+                "visible": true,
+                "labels": {
+                    "en": "Content"
+                }
+            },
+            "created_at": {
+                "visible": true,
+                "labels": {
+                    "en": "Processed"
+                },
+                "width": 180
+            }
+        }
+    },
+    "objects": [
+        {
+            "name": "slideforge.slide_explorer",
+            "type": "view",
+            "description": "Unified view of files and slides.",
+            "columns": [
+                {
+                    "name": "id",
+                    "type": "INTEGER",
+                    "primary_key": true
+                },
+                {
+                    "name": "filename",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "pptx_title",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "slide_number",
+                    "type": "INTEGER"
+                },
+                {
+                    "name": "slide_title",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "content",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "created_at",
+                    "type": "TIMESTAMP"
+                }
+            ]
+        }
+    ]
+}

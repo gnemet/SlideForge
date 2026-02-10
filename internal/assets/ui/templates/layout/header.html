@@ -1,0 +1,66 @@
+{{define "header"}}
+<header class="top-header">
+    <div class="header-brand-box">
+        <a href="/" class="brand">
+            <img src="/static/images/logo.png" alt="SlideForge Logo" class="brand-logo">
+            <span>SlideForge</span>
+        </a>
+        <span class="header-separator">|</span>
+        <span class="header-page-title" id="page-title">
+            {{if .Title}}{{.Title}}{{else if .ActiveNav}}{{T .Lang .ActiveNav}}{{else}}{{T .Lang `dashboard` }}{{end}}
+        </span>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="header-actions">
+        <!-- Language Selector -->
+        <button class="btn btn-muted loop-selector" data-action="switch-lang" data-langs='{{.LangsJSON}}'
+            data-current="{{.Lang}}" title="{{T .Lang `switch_language` }}">
+            <i class="fas fa-globe"></i>
+            <span style="text-transform: uppercase;">{{.Lang}}</span>
+        </button>
+
+        <!-- AI Status Button -->
+        <button class="ai-status-badge {{.AIStatusClass}}"
+            onclick="const newVal = '{{.AIStatus}}' === 'Off' ? 1 : 0.1; saveSetting('ai_insights_enabled', newVal); location.reload();"
+            title="{{if .AIInsightsEnabled}}Turn AI Off{{else}}Turn AI On{{end}} (Current: {{.AIStatus}})">
+            <i class="fas fa-bolt"></i>
+            <span>{{.AIStatus}}</span>
+        </button>
+
+        <!-- AI Billing Info -->
+        {{if .AllTimeAICost}}
+        <div class="header-billing" title="All-time AI Cost">
+            <i class="fas fa-coins text-warning"></i>
+            <span class="billing-cost">${{printf "%.4f" .AllTimeAICost}}</span>
+        </div>
+        {{end}}
+
+        <!-- Theme Toggle -->
+        <button class="btn btn-muted" id="theme-toggle" title="{{T .Lang `toggle_theme` }}">
+            <i class="fas fa-moon"></i>
+        </button>
+
+        <!-- User / Login Area -->
+        <div class="user-profile-wrapper">
+            <div class="user-profile" id="user-menu-toggle"
+                title="{{if .IsAuth}}{{.UserName}}{{else}}{{T .Lang `guest` }}{{end}}">
+                <div class="status-indicator {{if .IsAuth}}status-auth{{else}}status-guest{{end}}"
+                    title="{{if .IsAuth}}{{T .Lang `authorized` }}{{else}}{{T .Lang `guest_access` }}{{end}}"></div>
+                <i class="fas fa-user-circle"></i>
+                <i class="fas fa-caret-down"></i>
+            </div>
+            <div class="user-dropdown hidden" id="user-dropdown">
+                {{if .IsAuth}}
+                <a href="/logout" class="dropdown-item">
+                    <i class="fas fa-sign-out-alt"></i> {{T .Lang `sign_out` }}
+                </a>
+                {{else}}
+                <a href="/login" class="dropdown-item">
+                    <i class="fas fa-sign-in-alt"></i> {{T .Lang `sign_in` }}
+                </a>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</header>
+{{end}}
