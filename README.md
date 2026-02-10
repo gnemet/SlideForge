@@ -36,7 +36,7 @@ For fully private, offline orchestration:
 ## 🏁 Getting Started
 1. **Download** the relevant distribution from the [Releases](https://github.com/gnemet/SlideForge/releases) page.
 2. **Configure**: Update `config.yaml` with your DB credentials.
-3. **Database**: Run the migrations located in `database/migrations/`.
+3. **Database**: Run the migrations located in `internal/database/migrations/`.
 4. **Launch**:
    - **Windows**: Run `RUN.bat`
    - **Linux**: Run `./run.sh`

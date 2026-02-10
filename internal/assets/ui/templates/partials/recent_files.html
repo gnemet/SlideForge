@@ -1,13 +1,19 @@
 {{ define "partials/recent_files.html" }}
 <div class="pptx-grid animate-slide-up" style="margin-top: 1.5rem; animation-delay: 0.2s;">
     {{ range .Files }}
-    <div class="pptx-card" onclick="window.location='/selection?fileID={{ .ID }}'">
+    <div class="pptx-card" onclick="window.location='/selection?fileID={{ .ID }}'" data-id="{{ .ID }}"
+        data-filename="{{ .Filename }}">
         <div class="thumbnail">
             <img src="/thumbnails/{{ .ThumbnailDirPath }}/slide-0001.png" alt="{{ .Filename }}"
-                onerror="this.src='https://images.unsplash.com/photo-1557804506-669a67965ba0?w=500'">
+                onerror="this.src='/static/images/slide-placeholder.png'; this.onerror=null;">
         </div>
         <div class="card-info">
-            <div class="card-title">{{ if .Title }}{{ .Title }}{{ else }}{{ stripExt .Filename }}{{ end }}</div>
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div class="card-title">{{ if .Title }}{{ .Title }}{{ else }}{{ stripExt .Filename }}{{ end }}</div>
+                <div class="card-actions-hint">
+                    <i class="fas fa-ellipsis-v text-muted" style="font-size: 0.8rem;"></i>
+                </div>
+            </div>
             <div class="card-meta">
                 <span>{{ .CreatedAt.Format "2006.01.02" }}</span>
                 {{ if .IsTemplate }}

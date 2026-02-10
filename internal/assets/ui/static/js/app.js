@@ -205,3 +205,21 @@ function initSidebar() {
         localStorage.setItem('sidebar-collapsed', collapsed);
     });
 }
+
+function saveSetting(key, value) {
+    console.log(`Saving setting: ${key} = ${value}`);
+    const formData = new FormData();
+    formData.append('key', key);
+    formData.append('value', value);
+
+    fetch('/search-settings', {
+        method: 'POST',
+        body: formData
+    }).then(response => {
+        if (!response.ok) {
+            console.error('Failed to save setting');
+        }
+    }).catch(err => {
+        console.error('Error saving setting:', err);
+    });
+}

@@ -1,0 +1,92 @@
+{{template "base" .}}
+
+{{ define "content" }}
+<div class="content-header animate-fade-in">
+    <div class="header-left">
+        <a href="/dashboard" class="btn btn-muted btn-sm" style="margin-right: 1rem;"><i
+                class="fas fa-arrow-left"></i></a>
+        <div>
+            <h1 class="text-accent">{{ .Filename }} - {{T .Lang `comment_editor` }}</h1>
+            <p class="text-muted">{{T .Lang `edit_comment_placeholders` }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="comment-editor-container animate-slide-up">
+    {{ range $num, $slide := .Slides }}
+    <div class="slide-item card" style="margin-bottom: 2rem; padding: 1.5rem;">
+        <div style="display: flex; gap: 2rem;">
+            <div class="slide-preview" style="width: 300px; flex-shrink: 0;">
+                <img src="/thumbnails/{{ stripExt $.Filename }}/slide-{{ printf " %04d" $num }}.png"
+                    class="img-fluid rounded" style="width: 100%; border: 1px solid var(--border);"
+                    onerror="this.src='/static/images/slide-placeholder.png'; this.onerror=null;">
+                <div class="text-muted mt-2" style="font-size: 0.8rem;">Slide {{ $num }}</div>
+            </div>
+
+            <div class="slide-comments" style="flex-grow: 1;">
+                <h4 class="text-accent mb-3">Comments</h4>
+                {{ if $slide.Comments }}
+                {{ range $idx, $comment := $slide.Comments }}
+                {{ $key := printf "%d_%d" $num $idx }}
+                <div class="comment-box mb-4"
+                    style="padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted" style="font-size: 0.8rem;">By: <strong>{{ .Author }}</strong></span>
+                        <span id="status-{{ $key }}" class="badge bg-success hidden animate-fade-in">Saved</span>
+                    </div>
+                    <div class="original-text text-muted mb-2" style="font-style: italic; font-size: 0.9rem;">
+                        "{{ .Text }}"
+                    </div>
+                    <textarea class="form-control bg-dark text-light border-accent" rows="3"
+                        placeholder="Enter override text here..." name="text" hx-post="/editor/save"
+                        hx-trigger="keyup changed delay:1s"
+                        hx-vals='{"fileID": "{{ $.FileID }}", "slideNum": "{{ $num }}", "commentIdx": "{{ $idx }}"}'
+                        hx-target="#status-{{ $key }}" hx-swap="innerHTML show:none"
+                        style="resize: none;">{{ index $.Overrides $key }}</textarea>
+                </div>
+                {{ end }}
+                {{ else }}
+                <p class="text-muted">No comments found on this slide.</p>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+    {{ end }}
+</div>
+
+<style>
+    .animate-fade-in {
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .animate-slide-up {
+        animation: slideUp 0.6s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .hidden {
+        display: none;
+    }
+</style>
+{{ end }}

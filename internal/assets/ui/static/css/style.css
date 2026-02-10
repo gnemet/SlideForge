@@ -170,11 +170,19 @@
 .card-title {
     font-weight: 700;
     margin-bottom: 4px;
+    flex-grow: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .card-meta {
     font-size: 0.85rem;
     color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
 }
 
 /* Documentation Browser (About Page) */

@@ -27,6 +27,16 @@
             <span>{{.AIStatus}}</span>
         </button>
 
+        <!-- Auto Process Toggle -->
+        <button class="btn btn-muted {{if .AutoProcessEnabled}}text-success{{else}}text-muted{{end}}"
+            data-auto-enabled="{{if .AutoProcessEnabled}}true{{else}}false{{end}}"
+            onclick="const isEnabled = this.getAttribute('data-auto-enabled') === 'true'; const autoVal = isEnabled ? 0.1 : 1; saveSetting('auto_process_enabled', autoVal); location.reload();"
+            title="{{if .AutoProcessEnabled}}Disable Auto-Process{{else}}Enable Auto-Process{{end}}">
+            <i class="fas fa-magic"></i>
+            <span style="font-size: 0.7rem; font-weight: bold; margin-left: 4px;">{{if
+                .AutoProcessEnabled}}AUTO{{else}}MANUAL{{end}}</span>
+        </button>
+
         <!-- AI Billing Info -->
         {{if .AllTimeAICost}}
         <div class="header-billing" title="All-time AI Cost">

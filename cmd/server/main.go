@@ -172,11 +172,16 @@ func main() {
 	http.HandleFunc("/logout", handleLogout)
 	http.HandleFunc("/set-language", handleSetLanguage)
 	http.HandleFunc("/reprocess", AuthMiddleware(handleReprocess))
+	http.HandleFunc("/reprocess-file", AuthMiddleware(handleReprocessFile))
+	http.HandleFunc("/delete-file", AuthMiddleware(handleDeleteFile))
+	http.HandleFunc("/copy-to-stage", AuthMiddleware(handleCopyToStage))
 	http.HandleFunc("/reprocess-status", AuthMiddleware(handleReprocessStatus))
 	http.HandleFunc("/search", AuthMiddleware(handleSearch))
 	http.HandleFunc("/search-settings", AuthMiddleware(handleSearchSettings))
 	http.HandleFunc("/recent-files", AuthMiddleware(handleRecentFiles))
 	http.HandleFunc("/events/status", AuthMiddleware(handleEventsStatus))
+	http.HandleFunc("/editor/comments", AuthMiddleware(handleCommentEditor))
+	http.HandleFunc("/editor/save", AuthMiddleware(handleSaveComment))
 
 	port := cfg.Application.Port
 	if port == 0 {
@@ -255,28 +260,223 @@ func handleReprocess(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleReprocessStatus(w http.ResponseWriter, r *http.Request) {
+	isProcessing, currentFile, totalQueued, startTime := obs.GetStatus()
 	lang := i18n.GetLang(r)
-	isProcessing, currentFile, totalQueued, _ := obs.GetStatus()
-	if isProcessing {
-		statusText := i18n.T(lang, "processing_all")
-		if currentFile != "" {
-			statusText = fmt.Sprintf("%s (%s - %d left)", statusText, currentFile, totalQueued)
-		}
-		html := fmt.Sprintf(`
-			<span class="badge bg-warning animate-pulse" style="margin: 0;">%s</span>
-			<i class="fas fa-cog fa-spin text-warning"></i>
-		`, statusText)
-		w.Write([]byte(html))
-	} else {
+
+	if !isProcessing {
+		w.Header().Set("HX-Trigger", "reprocessFinished")
 		html := fmt.Sprintf(`
 			<div class="stat-value" style="font-size: 1.1rem; color: var(--success-color);">
 				<i class="fas fa-check-circle"></i> %s
 			</div>
-			<button hx-post="/reprocess" hx-target="#reprocess-status" class="btn btn-muted btn-sm" title="%s">
+			<button onclick="confirmReprocess('0')" class="btn btn-muted btn-sm">
 				<i class="fas fa-sync"></i>
 			</button>
-		`, i18n.T(lang, "system_ready"), i18n.T(lang, "reprocess_all_pptx"))
+		`, i18n.T(lang, "system_ready"))
 		w.Write([]byte(html))
+		return
+	}
+
+	duration := time.Since(startTime).Round(time.Second)
+	html := fmt.Sprintf(`
+		<span class="badge bg-warning animate-pulse" style="margin: 0;">
+			%s (%s - %d left)
+			<span id="process-duration">%s</span>
+		</span>
+		<i class="fas fa-cog fa-spin text-warning"></i>
+	`, i18n.T(lang, "processing_all"), currentFile, totalQueued, duration)
+	w.Write([]byte(html))
+}
+
+func handleReprocessFile(w http.ResponseWriter, r *http.Request) {
+	fileID := r.URL.Query().Get("fileID")
+	if fileID == "" {
+		http.Error(w, "fileID required", http.StatusBadRequest)
+		return
+	}
+
+	var filename, originalPath string
+	err := sqlDB.QueryRow("SELECT filename, original_file_path FROM pptx_files WHERE id = $1", fileID).Scan(&filename, &originalPath)
+	if err != nil {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+
+	// copy back to stage
+	destPath := filepath.Join(cfg.Application.Storage.Stage, filename)
+	// physical source path logic
+	physicalPath := originalPath
+	if !filepath.IsAbs(originalPath) {
+		parts := strings.Split(originalPath, "/")
+		if len(parts) > 1 {
+			category := parts[0]
+			rel := filepath.Join(parts[1:]...)
+			switch category {
+			case "template":
+				physicalPath = filepath.Join(cfg.Application.Storage.Template, rel)
+			case "stage":
+				physicalPath = filepath.Join(cfg.Application.Storage.Stage, rel)
+			}
+		}
+	}
+
+	if physicalPath != destPath {
+		err = copyFile(physicalPath, destPath)
+		if err != nil {
+			log.Printf("Failed to copy file to stage: %v", err)
+			http.Error(w, "Failed to copy file", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Trigger processing immediately (force=true bypasses AUTO toggle)
+	go obs.ProcessFile(destPath, true)
+
+	w.Header().Set("HX-Trigger", "refreshFiles")
+	w.WriteHeader(http.StatusOK)
+}
+
+func handleDeleteFile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	fileID := r.URL.Query().Get("fileID")
+	if fileID == "" {
+		http.Error(w, "fileID required", http.StatusBadRequest)
+		return
+	}
+
+	_, err := sqlDB.Exec("DELETE FROM pptx_files WHERE id = $1", fileID)
+	if err != nil {
+		log.Printf("Failed to delete file from DB: %v", err)
+		http.Error(w, "Failed to delete", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("HX-Trigger", "refreshFiles")
+	w.WriteHeader(http.StatusOK)
+}
+
+func handleCopyToStage(w http.ResponseWriter, r *http.Request) {
+	handleReprocessFile(w, r)
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	return out.Close()
+}
+
+func handleCommentEditor(w http.ResponseWriter, r *http.Request) {
+	fileID := r.URL.Query().Get("fileID")
+	if fileID == "" {
+		http.Error(w, "fileID required", http.StatusBadRequest)
+		return
+	}
+
+	var filename, originalPath string
+	err := sqlDB.QueryRow("SELECT filename, original_file_path FROM pptx_files WHERE id = $1", fileID).Scan(&filename, &originalPath)
+	if err != nil {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+
+	// physical path logic (helper needed?)
+	physicalPath := originalPath
+	if !filepath.IsAbs(originalPath) {
+		parts := strings.Split(originalPath, "/")
+		if len(parts) > 1 {
+			category := parts[0]
+			rel := filepath.Join(parts[1:]...)
+			switch category {
+			case "template":
+				physicalPath = filepath.Join(cfg.Application.Storage.Template, rel)
+			case "stage":
+				physicalPath = filepath.Join(cfg.Application.Storage.Stage, rel)
+			}
+		}
+	}
+
+	content, err := pptx.ExtractSlideContent(physicalPath)
+	if err != nil {
+		http.Error(w, "Failed to extract comments", http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch overrides
+	rows, err := sqlDB.Query("SELECT slide_number, comment_index, text FROM comment_overrides WHERE pptx_path = $1", originalPath)
+	overrides := make(map[string]string)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var sn, ci int
+			var txt string
+			if err := rows.Scan(&sn, &ci, &txt); err == nil {
+				key := fmt.Sprintf("%d_%d", sn, ci)
+				overrides[key] = txt
+			}
+		}
+	}
+
+	data := getBaseData(r, "Comment Editor", "dashboard")
+	data["FileID"] = fileID
+	data["Filename"] = filename
+	data["Slides"] = content
+	data["Overrides"] = overrides
+
+	renderTemplate(w, "comment_editor.html", data)
+}
+
+func handleSaveComment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.ParseForm()
+	fileID := r.FormValue("fileID")
+	slideNum := r.FormValue("slideNum")
+	commentIdx := r.FormValue("commentIdx")
+	text := r.FormValue("text")
+
+	if fileID == "" || slideNum == "" || commentIdx == "" {
+		http.Error(w, "Missing fields", http.StatusBadRequest)
+		return
+	}
+
+	var originalPath string
+	err := sqlDB.QueryRow("SELECT original_file_path FROM pptx_files WHERE id = $1", fileID).Scan(&originalPath)
+	if err != nil {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+
+	_, err = sqlDB.Exec(`
+		INSERT INTO comment_overrides (pptx_path, slide_number, comment_index, text)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (pptx_path, slide_number, comment_index) DO UPDATE SET text = $4
+	`, originalPath, slideNum, commentIdx, text)
+
+	if err != nil {
+		log.Printf("DB Error saving comment: %v", err)
+		w.Write([]byte("Error saving override"))
+	} else {
+		w.Write([]byte("Saved"))
 	}
 }
 
@@ -404,9 +604,10 @@ func handleSearchSettings(w http.ResponseWriter, r *http.Request) {
 	val := r.FormValue("value")
 	_, err := sqlDB.Exec("INSERT INTO search_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2", key, val)
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error saving setting"))
 	} else {
-		w.Write([]byte("Saved " + val))
+		w.Write([]byte("OK"))
 	}
 }
 
@@ -936,6 +1137,10 @@ func getBaseData(r *http.Request, title string, activeNav string) map[string]int
 	sqlDB.QueryRow("SELECT value FROM search_settings WHERE key = 'ai_insights_enabled'").Scan(&aiEnabledVal)
 	aiInsightsEnabled := aiEnabledVal > 0.5 || (aiEnabledVal == 0 && cfg.AI.Enabled)
 
+	var autoProcessVal float64
+	sqlDB.QueryRow("SELECT value FROM search_settings WHERE key = 'auto_process_enabled'").Scan(&autoProcessVal)
+	autoProcessEnabled := autoProcessVal > 0.5 || (autoProcessVal == 0 && true) // Default to ON if not set
+
 	aiStatus := "Off"
 	if aiInsightsEnabled {
 		aiStatus = "Unaccess"
@@ -946,17 +1151,18 @@ func getBaseData(r *http.Request, title string, activeNav string) map[string]int
 	}
 
 	return map[string]interface{}{
-		"Title":             title,
-		"ActiveNav":         activeNav,
-		"Lang":              lang,
-		"LangsJSON":         string(langsJSON),
-		"IsAuth":            authUser != "",
-		"UserName":          userName,
-		"IsProcessing":      isProcessing,
-		"AllTimeAICost":     allTimeCost,
-		"AIInsightsEnabled": aiInsightsEnabled,
-		"AIStatus":          aiStatus,
-		"AIStatusClass":     strings.ToLower(aiStatus),
+		"Title":              title,
+		"ActiveNav":          activeNav,
+		"Lang":               lang,
+		"LangsJSON":          string(langsJSON),
+		"IsAuth":             authUser != "",
+		"UserName":           userName,
+		"IsProcessing":       isProcessing,
+		"AllTimeAICost":      allTimeCost,
+		"AIInsightsEnabled":  aiInsightsEnabled,
+		"AutoProcessEnabled": autoProcessEnabled,
+		"AIStatus":           aiStatus,
+		"AIStatusClass":      strings.ToLower(aiStatus),
 		"App": map[string]string{
 			"Name":       appName,
 			"Version":    version,

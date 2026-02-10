@@ -1,0 +1,58 @@
+.custom-context-menu {
+    position: fixed;
+    z-index: 10000;
+    min-width: 180px;
+    background: rgba(20, 25, 40, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 6px 0;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    display: none;
+    animation: fadeIn 0.15s ease-out;
+}
+
+.custom-context-menu .menu-item {
+    padding: 10px 16px;
+    color: #fff;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.2s;
+}
+
+.custom-context-menu .menu-item i {
+    width: 16px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--accent);
+}
+
+.custom-context-menu .menu-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.custom-context-menu .menu-item.danger:hover {
+    background: rgba(255, 50, 50, 0.2);
+    color: #ff5555;
+}
+
+.custom-context-menu .menu-separator {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.05);
+    margin: 4px 0;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

@@ -105,12 +105,38 @@ func (o *Observer) Start(ctx context.Context) error {
 		}
 	}
 
+	// Set search path for this observer session
+	o.db.Exec("SET search_path TO slideforge, public")
+
 	o.log("Background observer started")
 
-	// Initial scan
-	o.scanDirectory(stageDir)
-	if originalDir != "" {
-		o.scanDirectory(originalDir)
+	// Initial scan - Only if auto-process is enabled
+	var autoProcessVal float64
+	err = o.db.QueryRow("SELECT value FROM search_settings WHERE key = 'auto_process_enabled'").Scan(&autoProcessVal)
+	if err == nil {
+		if autoProcessVal >= 0.5 {
+			o.scanDirectory(stageDir, false)
+			if originalDir != "" {
+				o.scanDirectory(originalDir, false)
+			}
+		} else {
+			o.log("Auto-process disabled at startup. Skipping initial scan.")
+		}
+	} else if err == sql.ErrNoRows {
+		// Default to enabled if setting missing? Or disabled?
+		// Current logic seems to want it disabled if set to 0.1
+		// Let's assume missing = enabled for now as it was before,
+		// but checking error is safer.
+		o.scanDirectory(stageDir, false)
+		if originalDir != "" {
+			o.scanDirectory(originalDir, false)
+		}
+	} else {
+		o.log("Error checking auto-process setting: %v. Proceeding with scan.", err)
+		o.scanDirectory(stageDir, false)
+		if originalDir != "" {
+			o.scanDirectory(originalDir, false)
+		}
 	}
 
 	for {
@@ -121,11 +147,18 @@ func (o *Observer) Start(ctx context.Context) error {
 			}
 			if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) {
 				if strings.HasSuffix(strings.ToLower(event.Name), ".pptx") {
-					o.log("Detected change in: %s", event.Name)
+					// Check if auto-process is enabled
+					var autoProcessVal float64
+					o.db.QueryRow("SELECT value FROM search_settings WHERE key = 'auto_process_enabled'").Scan(&autoProcessVal)
+					if autoProcessVal < 0.5 && autoProcessVal != 0 {
+						o.log("Auto-process disabled. Skipping: %s", event.Name)
+						continue
+					}
 
+					o.log("Detected change in: %s", event.Name)
 					// Debounce/delay for file transfer to complete
 					time.Sleep(2 * time.Second)
-					o.processFile(event.Name)
+					o.ProcessFile(event.Name, false)
 				} else if event.Has(fsnotify.Create) {
 					// If a new directory is created, watch it too
 					if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
@@ -145,7 +178,7 @@ func (o *Observer) Start(ctx context.Context) error {
 	}
 }
 
-func (o *Observer) scanDirectory(dir string) {
+func (o *Observer) scanDirectory(dir string, force bool) {
 	o.log("Scanning directory recursively: %s", dir)
 	var pptxFiles []string
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -167,11 +200,11 @@ func (o *Observer) scanDirectory(dir string) {
 	o.mu.Unlock()
 
 	for _, fullPath := range pptxFiles {
-		o.processFile(fullPath)
+		o.ProcessFile(fullPath, force)
 	}
 }
 
-func (o *Observer) processFile(path string) {
+func (o *Observer) ProcessFile(path string, force bool) {
 	filename := filepath.Base(path)
 
 	o.mu.Lock()
@@ -208,19 +241,21 @@ func (o *Observer) processFile(path string) {
 	defer os.Remove(localPPTXPath)
 
 	// 3. Process-once & Change detection (using the checksum from local)
-	existing, err := database.GetPPTXByOriginalPath(o.db, path)
-	if err == nil && existing != nil {
-		if existing.Checksum == checksum && checksum != "" {
-			o.log("File already processed and unchanged: %s. Skipping.", filename)
-			return
-		}
-		o.log("File changed: %s. Reprocessing.", filename)
-	} else if checksum != "" {
-		// Check for content match elsewhere (deduplication)
-		existing, err = database.GetPPTXByChecksum(o.db, checksum)
+	if !force {
+		existing, err := database.GetPPTXByOriginalPath(o.db, path)
 		if err == nil && existing != nil {
-			o.log("Content already processed at %s: %s. Skipping.", existing.OriginalFilePath, filename)
-			return
+			if existing.Checksum == checksum && checksum != "" {
+				o.log("File already processed and unchanged: %s. Skipping.", filename)
+				return
+			}
+			o.log("File changed: %s. Reprocessing.", filename)
+		} else if checksum != "" {
+			// Check for content match elsewhere (deduplication)
+			existing, err = database.GetPPTXByChecksum(o.db, checksum)
+			if err == nil && existing != nil {
+				o.log("Content already processed at %s: %s. Skipping.", existing.OriginalFilePath, filename)
+				return
+			}
 		}
 	}
 
@@ -238,6 +273,8 @@ func (o *Observer) processFile(path string) {
 	srcRoot := o.cfg.Application.Storage.Stage
 	if o.cfg.Application.Storage.Original != "" && strings.HasPrefix(path, o.cfg.Application.Storage.Original) {
 		srcRoot = o.cfg.Application.Storage.Original
+	} else if o.cfg.Application.Storage.Template != "" && strings.HasPrefix(path, o.cfg.Application.Storage.Template) {
+		srcRoot = o.cfg.Application.Storage.Template
 	}
 
 	relPPTX, _ := filepath.Rel(srcRoot, path)
@@ -309,7 +346,7 @@ func (o *Observer) processFile(path string) {
 	pptxFile := &database.PPTXFile{
 		Filename:         filename,
 		OriginalFilePath: path,
-		ThumbnailDirPath: cleanFilename,
+		ThumbnailDirPath: thumbSubPath,
 		Metadata:         metadataJSON,
 		IsTemplate:       len(tags) > 0,
 		Checksum:         checksum,
@@ -317,27 +354,34 @@ func (o *Observer) processFile(path string) {
 
 	// Check for existing file by Checksum
 	var fileID int
-	if checksum != "" {
-		err = o.db.QueryRow("SELECT id FROM pptx_files WHERE checksum = $1", checksum).Scan(&fileID)
-		if err == nil {
-			o.log("File %s (checksum: %s) already exists (ID: %d). Skipping duplicate processing.", filename, checksum, fileID)
-			o.finalizeFile(path, filename, fileID)
-			return
-		}
+	err = o.db.QueryRow("SELECT id FROM pptx_files WHERE checksum = $1", checksum).Scan(&fileID)
+	if err == nil && !force {
+		o.log("File %s (checksum: %s) already exists (ID: %d). Skipping duplicate processing.", filename, checksum, fileID)
+		o.finalizeFile(path, filename, fileID)
+		return
 	}
 
 	// Fallback to filename/path check if checksum logic didn't hit
 	var existingID int
-	err = o.db.QueryRow("SELECT id FROM pptx_files WHERE filename = $1 AND original_file_path = $2", filename, path).Scan(&existingID)
+	if fileID == 0 {
+		err = o.db.QueryRow("SELECT id FROM pptx_files WHERE filename = $1 AND original_file_path = $2", filename, path).Scan(&existingID)
+		if err == nil && existingID != 0 && !force {
+			o.log("File %s already exists by path (ID: %d). Skipping.", filename, existingID)
+			o.finalizeFile(path, filename, existingID)
+			return
+		}
+		if err == nil {
+			fileID = existingID
+		}
+	}
 
-	if err == sql.ErrNoRows || existingID == 0 {
+	if fileID == 0 {
 		fileID, err = database.SavePPTXMetadata(o.db, pptxFile)
 		if err != nil {
 			o.log("Failed to save metadata to DB: %v", err)
 			return
 		}
-	} else if err == nil {
-		fileID = existingID
+	} else {
 		// Update existing (e.g. metadata or checksum if it was empty)
 		_, err = o.db.Exec("UPDATE pptx_files SET metadata = $1, is_template = $2, thumbnail_dir_path = $3, checksum = $4 WHERE id = $5",
 			pptxFile.Metadata, pptxFile.IsTemplate, pptxFile.ThumbnailDirPath, pptxFile.Checksum, fileID)
@@ -348,9 +392,6 @@ func (o *Observer) processFile(path string) {
 		// If we are updating, we MIGHT want to reprocess slides if forced, but for now we assume simple idempotency
 		// For safety, let's delete existing slides so we don't duplicate them if we continue
 		_, _ = o.db.Exec("DELETE FROM collected_slides WHERE pptx_file_id = $1", fileID)
-	} else {
-		o.log("DB error checking existing file: %v", err)
-		return
 	}
 
 	// Save slides and collect summaries
@@ -596,10 +637,10 @@ func (o *Observer) ReprocessAll() {
 	o.totalQueued = 0 // Reset for multi-dir scan
 	o.mu.Unlock()
 
-	o.scanDirectory(stageDir)
+	o.scanDirectory(stageDir, true)
 	originalDir := o.cfg.Application.Storage.Original
 	if originalDir != "" {
-		o.scanDirectory(originalDir)
+		o.scanDirectory(originalDir, true)
 	}
 }
 
