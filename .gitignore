@@ -8,6 +8,8 @@ mnt/
 /template/
 /templates/
 .temp/
+temp/
+temp_*/
 opt/envs/.env_*
 opt/*.json
 
