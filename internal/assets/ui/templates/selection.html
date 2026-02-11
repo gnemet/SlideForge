@@ -17,7 +17,7 @@
         onclick="$(this).toggleClass('selected'); $(this).find('input').prop('checked', $(this).hasClass('selected'))">
         <input type="checkbox" name="selectedSlides" value="{{ .SlideNum }}" style="display: none;">
         <div class="thumbnail">
-            <img src="/{{ .PNGPath }}" alt="Slide {{ .SlideNum }}">
+            <img src="/thumbnails/{{ .PNGPath }}" alt="Slide {{ .SlideNum }}">
             <div class="selection-indicator">
                 <i class="fas fa-check-circle"></i>
             </div>

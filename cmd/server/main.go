@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 
 	"encoding/json"
@@ -87,8 +89,8 @@ func main() {
 	}()
 
 	// Initialize Directories
-	os.MkdirAll("uploads", 0755)
-	os.MkdirAll("thumbnails", 0755)
+	os.MkdirAll(cfg.Application.Storage.Stage, 0755)
+	os.MkdirAll(cfg.Application.Storage.Thumbnails, 0755)
 
 	i18nFS, _ := fs.Sub(assets.EmbeddedAssets, "resources")
 	i18n.Init(i18nFS)
@@ -106,6 +108,9 @@ func main() {
 		},
 		"contains": func(s, substr string) bool {
 			return strings.Contains(s, substr)
+		},
+		"mul": func(a, b int) int {
+			return a * b
 		},
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {
@@ -143,6 +148,7 @@ func main() {
 	staticUI, _ := fs.Sub(assets.EmbeddedAssets, "ui/static")
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticUI))))
 
+	log.Printf("Serving thumbnails from: %s", cfg.Application.Storage.Thumbnails)
 	http.Handle("/thumbnails/", http.StripPrefix("/thumbnails/", http.FileServer(http.Dir(cfg.Application.Storage.Thumbnails))))
 
 	// Datagrid library assets (Embedded in library)
@@ -182,6 +188,7 @@ func main() {
 	http.HandleFunc("/events/status", AuthMiddleware(handleEventsStatus))
 	http.HandleFunc("/editor/comments", AuthMiddleware(handleCommentEditor))
 	http.HandleFunc("/editor/save", AuthMiddleware(handleSaveComment))
+	http.HandleFunc("/editor/save-slide-text", AuthMiddleware(handleSaveSlideText))
 
 	port := cfg.Application.Port
 	if port == 0 {
@@ -384,6 +391,7 @@ func copyFile(src, dst string) error {
 
 func handleCommentEditor(w http.ResponseWriter, r *http.Request) {
 	fileID := r.URL.Query().Get("fileID")
+	slideNumStr := r.URL.Query().Get("slide")
 	if fileID == "" {
 		http.Error(w, "fileID required", http.StatusBadRequest)
 		return
@@ -396,7 +404,6 @@ func handleCommentEditor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// physical path logic (helper needed?)
 	physicalPath := originalPath
 	if !filepath.IsAbs(originalPath) {
 		parts := strings.Split(originalPath, "/")
@@ -408,12 +415,15 @@ func handleCommentEditor(w http.ResponseWriter, r *http.Request) {
 				physicalPath = filepath.Join(cfg.Application.Storage.Template, rel)
 			case "stage":
 				physicalPath = filepath.Join(cfg.Application.Storage.Stage, rel)
+			case "original":
+				physicalPath = filepath.Join(cfg.Application.Storage.Original, rel)
 			}
 		}
 	}
 
 	content, err := pptx.ExtractSlideContent(physicalPath)
 	if err != nil {
+		log.Printf("Extraction failed for %s: %v", physicalPath, err)
 		http.Error(w, "Failed to extract comments", http.StatusInternalServerError)
 		return
 	}
@@ -438,6 +448,28 @@ func handleCommentEditor(w http.ResponseWriter, r *http.Request) {
 	data["Filename"] = filename
 	data["Slides"] = content
 	data["Overrides"] = overrides
+
+	// Numerical keys for sorted iteration in template if needed
+	var slideNums []int
+	for n := range content {
+		slideNums = append(slideNums, n)
+	}
+	sort.Ints(slideNums)
+	data["SlideNums"] = slideNums
+
+	// HTMX Partial Request
+	if r.Header.Get("HX-Request") == "true" && slideNumStr != "" {
+		sNum, _ := strconv.Atoi(slideNumStr)
+		slide, ok := content[sNum]
+		if !ok {
+			http.Error(w, "Slide not found", http.StatusNotFound)
+			return
+		}
+		data["SelectedSlide"] = slide
+		data["SlideNum"] = sNum
+		renderTemplate(w, "partials/comment_slide_detail.html", data)
+		return
+	}
 
 	renderTemplate(w, "comment_editor.html", data)
 }
@@ -478,6 +510,57 @@ func handleSaveComment(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Write([]byte("Saved"))
 	}
+}
+
+func handleSaveSlideText(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	fileID := r.FormValue("fileID")
+	slideNum, _ := strconv.Atoi(r.FormValue("slideNum"))
+	shapeIdx, _ := strconv.Atoi(r.FormValue("shapeIdx"))
+	text := r.FormValue("text")
+
+	if fileID == "" {
+		http.Error(w, "fileID required", http.StatusBadRequest)
+		return
+	}
+
+	var originalPath string
+	err := sqlDB.QueryRow("SELECT original_file_path FROM pptx_files WHERE id = $1", fileID).Scan(&originalPath)
+	if err != nil {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
+
+	// Resolve physical path
+	physicalPath := originalPath
+	if !filepath.IsAbs(originalPath) {
+		parts := strings.Split(originalPath, "/")
+		if len(parts) > 1 {
+			category := parts[0]
+			rel := filepath.Join(parts[1:]...)
+			switch category {
+			case "template":
+				physicalPath = filepath.Join(cfg.Application.Storage.Template, rel)
+			case "stage":
+				physicalPath = filepath.Join(cfg.Application.Storage.Stage, rel)
+			case "original":
+				physicalPath = filepath.Join(cfg.Application.Storage.Remote, rel)
+			}
+		}
+	}
+
+	err = pptx.UpdateSlideText(physicalPath, slideNum, shapeIdx, text)
+	if err != nil {
+		log.Printf("Error updating PPTX text: %v", err)
+		w.Write([]byte("<span class='badge bg-danger'>Error</span>"))
+		return
+	}
+
+	w.Write([]byte("<span class='badge bg-success'>Updated</span>"))
 }
 
 func handleSearch(w http.ResponseWriter, r *http.Request) {
@@ -577,7 +660,7 @@ func handleSearch(w http.ResponseWriter, r *http.Request) {
 	<div class='search-results-grid'>
 		{{range .Results}}
 		<div class='search-result-card' onclick="window.location='/selection?fileID={{.FileID}}'">
-			<img src='/{{.PNGPath}}' loading='lazy'>
+			<img src='/thumbnails/{{.PNGPath}}' loading='lazy'>
 			<div class='result-info'>
 				<strong>{{stripExt .Filename}}</strong> - {{ if .Title }}{{ .Title }}{{ else }}Slide {{.SlideNumber}}{{ end }}
 				<p class='content-snippet'>{{.Snippet}}</p>
@@ -640,7 +723,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	destPath := filepath.Join("uploads", header.Filename)
+	destPath := filepath.Join(cfg.Application.Storage.Stage, header.Filename)
 	dest, err := os.Create(destPath)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -650,8 +733,8 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	io.Copy(dest, file)
 
 	// Process PPTX to PNGs
-	thumbDir := filepath.Join("thumbnails", header.Filename)
-	pngFiles, err := pptx.ExtractSlidesToPNG(destPath, thumbDir)
+	thumbDir := filepath.Join(cfg.Application.Storage.Thumbnails, header.Filename)
+	pngFiles, err := pptx.ExtractSlidesToPNG(destPath, thumbDir, cfg.Application.Storage.Temp)
 	if err != nil {
 		log.Printf("PNG extraction failed: %v", err)
 	}
@@ -739,7 +822,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 		err = database.SaveSlide(sqlDB, &database.Slide{
 			PPTXFileID: fileID,
 			SlideNum:   slideNum,
-			PNGPath:    filepath.ToSlash(filepath.Join("thumbnails", thumbSubPath, relPNGPath)),
+			PNGPath:    filepath.ToSlash(filepath.Join(thumbSubPath, relPNGPath)),
 			Content:    content,
 			StyleInfo:  styleJSON,
 			AIAnalysis: []byte("{}"),
@@ -1163,6 +1246,8 @@ func getBaseData(r *http.Request, title string, activeNav string) map[string]int
 		"AutoProcessEnabled": autoProcessEnabled,
 		"AIStatus":           aiStatus,
 		"AIStatusClass":      strings.ToLower(aiStatus),
+		"LDAPEnabled":        cfg.Ldap.Enabled,
+		"AuthEnabled":        cfg.Application.Authentication,
 		"App": map[string]string{
 			"Name":       appName,
 			"Version":    version,

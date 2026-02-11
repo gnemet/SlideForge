@@ -35,7 +35,8 @@ if [ -f ".env" ]; then
 fi
 
 # 2. Mount Google Drive Business/BDO
-MOUNT_DIR="./mnt/bdo"
+# Professional Mount Logic: Use external STORAGE_REMOTE if defined
+MOUNT_DIR=${STORAGE_REMOTE:-"/home/gnemet/SlideForgeFiles/remote"}
 
 # Antigravity Robust Mount Pattern: Detect broken FUSE endpoints early
 if mountpoint -q "$MOUNT_DIR" 2>/dev/null; then
@@ -56,41 +57,30 @@ else
     echo "Google Drive already mounted and accessible at $MOUNT_DIR"
 fi
 
-# 3. Link application directories to the mount (Antigravity Library Pattern)
-# Use env vars from the loaded .env file, or fallback defaults if something is missing.
+# 3. Handle Cleanup of Obsolete Internal Folders
+# If we have a legacy ./mnt folder that is NOT a mountpoint, remove it/warn
+if [ -d "./mnt" ] && ! mountpoint -q "./mnt"; then
+    echo "Cleaning up obsolete internal ./mnt folder..."
+    rm -rf "./mnt"
+fi
+if [ -d "./storage" ]; then
+    echo "Cleaning up obsolete internal ./storage folder..."
+    rm -rf "./storage"
+fi
+if [ -d "./temp" ]; then
+    echo "Cleaning up obsolete internal ./temp folder..."
+    rm -rf "./temp"
+fi
 
-STAGE_PATH=${STORAGE_STAGE:-"./storage/uploads"}
-TEMPLATE_PATH=${STORAGE_TEMPLATE:-"./storage/template"}
-THUMB_PATH=${STORAGE_THUMBNAILS:-"./storage/thumbnails"}
-
-manage_link() {
-    local target=$1
-    local link=$2
-    
-    # Create target directory if it doesn't exist (important for fresh mounts)
-    mkdir -p "$target"
-
-    if [ -L "$link" ]; then rm "$link"; fi
-    if [ -d "$link" ] && [ ! -L "$link" ]; then 
-        echo "Backing up existing directory $link..."
-        mv "$link" "$link.bak-$(date +%s)"
-    fi
-    
-    ln -s "$target" "$link"
-    echo "Linked $link -> $target"
-}
-
-manage_link "$STAGE_PATH" "uploads"
-manage_link "$TEMPLATE_PATH" "templates"
-manage_link "$THUMB_PATH" "thumbnails"
-
-echo "Building SlideForge..."
+# 4. Building SlideForge...
 go build -o bin/slideforge ./cmd/server
 
 APP_PORT=${PORT:-8088}
+LOG_FILE=${STORAGE_LOG:-"/home/gnemet/SlideForgeFiles/slideforge.log"}
 
 echo "Killing process on port $APP_PORT..."
 fuser -k $APP_PORT/tcp 2>/dev/null || true
 
-echo "Starting SlideForge on http://localhost:$APP_PORT"
-./bin/slideforge
+echo "Starting SlideForge on http://localhost:$APP_PORT (Logs: $LOG_FILE)"
+# We run in foreground but also tee to the log file
+./bin/slideforge 2>&1 | tee -a "$LOG_FILE"

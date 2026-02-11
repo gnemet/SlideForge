@@ -42,8 +42,15 @@ For fully private, offline orchestration:
    - **Linux**: Run `./run.sh`
 
 ## Repository Structure
-- `cmd/server/`: Main application.
-- `internal/`: Core logic (pptx manipulation, ai, db).
-- `ui/`: Frontend assets and templates.
-- `database/`: SQL migrations and schemas.
-- `data/`: Storage for uploads and generated thumbnails.
+- `cmd/server/`: Main application entry point.
+- `internal/`: Core logic and assets.
+  - `assets/ui/`: Frontend templates and static files (embedded).
+  - `pptx/`: PPTX manipulation logic.
+  - `database/`: SQL migrations and repository.
+- `bin/`: Compiled binaries.
+- `opt/envs/`: Environment configuration management.
+- `scripts/`: Maintenance and utility scripts.
+- **Dynamic Links** (Created by `build_run.sh`):
+  - `uploads/` -> External staging area.
+  - `templates/` -> External template storage.
+  - `thumbnails/` -> External thumbnail storage.

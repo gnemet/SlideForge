@@ -149,9 +149,9 @@
     </div>
     <div class="slides-container" id="slides-{{.ID}}">
         {{range .Slides}}
-        <div class="slide-item" draggable="true" data-id="{{.ID}}" data-path="{{.PNGPath}}"
+        <div class="slide-item" draggable="true" data-id="{{.ID}}" data-path="/thumbnails/{{.PNGPath}}"
             data-summary="{{.AISummary}}" data-content="{{.Content}}" onclick="handleSlideClick(this, event)">
-            <img src="{{.PNGPath}}" class="slide-thumb-small">
+            <img src="/thumbnails/{{.PNGPath}}" class="slide-thumb-small">
             <div class="slide-info">
                 <span>{{ if .Title }}{{ .Title }}{{ else }}{{T $lang "slide_num"}} {{ .SlideNum }}{{ end
                     }}</span>

@@ -46,6 +46,19 @@
 
     <script src="/static/js/app.js"></script>
     <script src="/static/js/context_menu.js"></script>
+    <script>
+        // Auto-login trigger if LDAP is enabled and user is a guest
+        $(document).ready(function() {
+            const isAuth = {{printf "%t" .IsAuth}};
+            const ldapEnabled = {{printf "%t" .LDAPEnabled}};
+            const authEnabled = {{printf "%t" .AuthEnabled}};
+
+            if (!isAuth && ldapEnabled && authEnabled) {
+                console.log("LDAP enabled and user is guest, auto-triggering login...");
+                window.location.href = "/login";
+            }
+        });
+    </script>
     {{block "extra_js" .}}{{end}}
 </body>
 

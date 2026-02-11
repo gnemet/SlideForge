@@ -1,92 +1,176 @@
 {{template "base" .}}
 
 {{ define "content" }}
+<!-- Quill CSS -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<!-- Quill JS -->
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
 <div class="content-header animate-fade-in">
     <div class="header-left">
         <a href="/dashboard" class="btn btn-muted btn-sm" style="margin-right: 1rem;"><i
                 class="fas fa-arrow-left"></i></a>
         <div>
-            <h1 class="text-accent">{{ .Filename }} - {{T .Lang `comment_editor` }}</h1>
-            <p class="text-muted">{{T .Lang `edit_comment_placeholders` }}</p>
+            <h1 class="text-accent">{{ .Filename }}</h1>
+            <p class="text-muted">{{T .Lang `comment_editor_description` }}</p>
         </div>
     </div>
 </div>
 
-<div class="comment-editor-container animate-slide-up">
-    {{ range $num, $slide := .Slides }}
-    <div class="slide-item card" style="margin-bottom: 2rem; padding: 1.5rem;">
-        <div style="display: flex; gap: 2rem;">
-            <div class="slide-preview" style="width: 300px; flex-shrink: 0;">
-                <img src="/thumbnails/{{ stripExt $.Filename }}/slide-{{ printf " %04d" $num }}.png"
-                    class="img-fluid rounded" style="width: 100%; border: 1px solid var(--border);"
-                    onerror="this.src='/static/images/slide-placeholder.png'; this.onerror=null;">
-                <div class="text-muted mt-2" style="font-size: 0.8rem;">Slide {{ $num }}</div>
-            </div>
-
-            <div class="slide-comments" style="flex-grow: 1;">
-                <h4 class="text-accent mb-3">Comments</h4>
-                {{ if $slide.Comments }}
-                {{ range $idx, $comment := $slide.Comments }}
-                {{ $key := printf "%d_%d" $num $idx }}
-                <div class="comment-box mb-4"
-                    style="padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-muted" style="font-size: 0.8rem;">By: <strong>{{ .Author }}</strong></span>
-                        <span id="status-{{ $key }}" class="badge bg-success hidden animate-fade-in">Saved</span>
-                    </div>
-                    <div class="original-text text-muted mb-2" style="font-style: italic; font-size: 0.9rem;">
-                        "{{ .Text }}"
-                    </div>
-                    <textarea class="form-control bg-dark text-light border-accent" rows="3"
-                        placeholder="Enter override text here..." name="text" hx-post="/editor/save"
-                        hx-trigger="keyup changed delay:1s"
-                        hx-vals='{"fileID": "{{ $.FileID }}", "slideNum": "{{ $num }}", "commentIdx": "{{ $idx }}"}'
-                        hx-target="#status-{{ $key }}" hx-swap="innerHTML show:none"
-                        style="resize: none;">{{ index $.Overrides $key }}</textarea>
+<div class="comment-editor-layout animate-slide-up">
+    <!-- Sidebar: Slide List -->
+    <div class="slide-sidebar scrollbar-thin">
+        <div class="sidebar-header p-3 border-bottom border-muted">
+            <input type="text" id="slide-search" class="form-control form-control-sm bg-dark text-light border-muted"
+                placeholder="Search slides..." onkeyup="filterSlides()">
+        </div>
+        <div class="slide-list mt-2">
+            {{ range .SlideNums }}
+            {{ $slide := index $.Slides . }}
+            <div class="slide-nav-item animate-fade-in" data-slide="{{ . }}"
+                hx-get="/editor/comments?fileID={{ $.FileID }}&slide={{ . }}" hx-target="#editor-detail-pane"
+                hx-push-url="true" onclick="setActiveSlide(this)">
+                <div class="nav-thumb">
+                    <img src="/thumbnails/{{ stripExt $.Filename }}/slide-{{ printf " %04d" . }}.png"
+                        onerror="this.src='/static/images/slide-placeholder.png'; this.onerror=null;">
                 </div>
-                {{ end }}
-                {{ else }}
-                <p class="text-muted">No comments found on this slide.</p>
-                {{ end }}
+                <div class="nav-info">
+                    <span class="slide-num">Slide {{ . }}</span>
+                    <span
+                        class="comment-count badge {{ if $slide.Comments }}bg-accent text-dark{{ else }}bg-muted{{ end }}">
+                        {{ len $slide.Comments }}
+                    </span>
+                </div>
             </div>
+            {{ end }}
         </div>
     </div>
-    {{ end }}
+
+    <!-- Main Detail Pane -->
+    <div class="editor-detail-pane scrollbar-thin" id="editor-detail-pane">
+        <div class="welcome-pane text-center animate-fade-in py-5">
+            <i class="fas fa-edit fa-4x text-muted opacity-2 mb-4"></i>
+            <h3 class="text-muted">Select a slide to edit comments</h3>
+            <p class="text-muted small">Choose from the sidebar to begin customizing slide content.</p>
+        </div>
+    </div>
 </div>
+
+<script>
+    function setActiveSlide(el) {
+        document.querySelectorAll('.slide-nav-item').forEach(item => item.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    function filterSlides() {
+        const query = document.getElementById('slide-search').value.toLowerCase();
+        document.querySelectorAll('.slide-nav-item').forEach(item => {
+            const text = item.innerText.toLowerCase();
+            item.style.display = text.includes(query) ? 'flex' : 'none';
+        });
+    }
+
+    // Auto-load first slide if none selected
+    window.addEventListener('load', () => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('slide')) {
+            const slideNum = params.get('slide');
+            const item = document.querySelector(`.slide-nav-item[data-slide="${slideNum}"]`);
+            if (item) item.click();
+        }
+    });
+
+    // Handle HTMX after-swap to re-initialize editor if needed (though baked into partial)
+    document.body.addEventListener('htmx:afterSwap', (evt) => {
+        if (evt.detail.target.id === 'editor-detail-pane') {
+            // Any post-swap logic if needed
+        }
+    });
+</script>
 
 <style>
-    .animate-fade-in {
-        animation: fadeIn 0.5s ease-out;
+    .comment-editor-layout {
+        display: flex;
+        height: calc(100vh - 180px);
+        gap: 1.5rem;
+        background: rgba(var(--bg-rgb), 0.5);
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border);
     }
 
-    .animate-slide-up {
-        animation: slideUp 0.6s ease-out;
+    .slide-sidebar {
+        width: 300px;
+        flex-shrink: 0;
+        background: rgba(0, 0, 0, 0.2);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
     }
 
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-        }
-
-        to {
-            opacity: 1;
-        }
+    .slide-list {
+        overflow-y: auto;
+        flex-grow: 1;
     }
 
-    @keyframes slideUp {
-        from {
-            transform: translateY(20px);
-            opacity: 0;
-        }
-
-        to {
-            transform: translateY(0);
-            opacity: 1;
-        }
+    .slide-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
     }
 
-    .hidden {
-        display: none;
+    .slide-nav-item:hover {
+        background: rgba(var(--accent-rgb), 0.05);
+    }
+
+    .slide-nav-item.active {
+        background: rgba(var(--accent-rgb), 0.1);
+        border-left-color: var(--accent);
+    }
+
+    .nav-thumb {
+        width: 80px;
+        height: 45px;
+        overflow: hidden;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+    }
+
+    .nav-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .nav-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .slide-num {
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .comment-count {
+        font-size: 0.7rem;
+        align-self: flex-start;
+    }
+
+    .editor-detail-pane {
+        flex-grow: 1;
+        padding: 2rem;
+        overflow-y: auto;
+        position: relative;
+    }
+
+    .opacity-2 {
+        opacity: 0.2;
     }
 </style>
 {{ end }}

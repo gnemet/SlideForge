@@ -41,6 +41,8 @@ type StorageConfig struct {
 	Template   string `mapstructure:"template"`
 	Local      string `mapstructure:"local"`
 	Remote     string `mapstructure:"remote"`
+	Temp       string `mapstructure:"temp"`
+	Log        string `mapstructure:"log"`
 }
 
 type AIConfig struct {
@@ -144,6 +146,8 @@ func LoadConfig() (*Config, error) {
 		{"application.storage.thumbnails", "STORAGE_THUMBNAILS"},
 		{"application.storage.local", "STORAGE_LOCAL"},
 		{"application.storage.remote", "STORAGE_REMOTE"},
+		{"application.storage.temp", "STORAGE_TEMP"},
+		{"application.storage.log", "STORAGE_LOG"},
 
 		{"ai.providers.gemini.key", "GEMINI_KEY"},
 		{"ai.providers.gemini.model", "GEMINI_MODEL"},
@@ -202,6 +206,8 @@ func LoadConfig() (*Config, error) {
 	cfg.Application.Storage.Template = expandRecursive(cfg.Application.Storage.Template)
 	cfg.Application.Storage.Local = expandRecursive(cfg.Application.Storage.Local)
 	cfg.Application.Storage.Remote = expandRecursive(cfg.Application.Storage.Remote)
+	cfg.Application.Storage.Temp = expandRecursive(cfg.Application.Storage.Temp)
+	cfg.Application.Storage.Log = expandRecursive(cfg.Application.Storage.Log)
 
 	return &cfg, nil
 }

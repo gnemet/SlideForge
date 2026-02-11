@@ -113,7 +113,8 @@ func (o *Observer) Start(ctx context.Context) error {
 	// Initial scan - Only if auto-process is enabled
 	var autoProcessVal float64
 	err = o.db.QueryRow("SELECT value FROM search_settings WHERE key = 'auto_process_enabled'").Scan(&autoProcessVal)
-	if err == nil {
+	switch err {
+	case nil:
 		if autoProcessVal >= 0.5 {
 			o.scanDirectory(stageDir, false)
 			if originalDir != "" {
@@ -122,21 +123,14 @@ func (o *Observer) Start(ctx context.Context) error {
 		} else {
 			o.log("Auto-process disabled at startup. Skipping initial scan.")
 		}
-	} else if err == sql.ErrNoRows {
-		// Default to enabled if setting missing? Or disabled?
-		// Current logic seems to want it disabled if set to 0.1
-		// Let's assume missing = enabled for now as it was before,
-		// but checking error is safer.
+	case sql.ErrNoRows:
+		// Default to enabled if setting missing
 		o.scanDirectory(stageDir, false)
 		if originalDir != "" {
 			o.scanDirectory(originalDir, false)
 		}
-	} else {
-		o.log("Error checking auto-process setting: %v. Proceeding with scan.", err)
-		o.scanDirectory(stageDir, false)
-		if originalDir != "" {
-			o.scanDirectory(originalDir, false)
-		}
+	default:
+		o.log("Failed to check auto-process setting: %v", err)
 	}
 
 	for {
@@ -306,11 +300,11 @@ func (o *Observer) ProcessFile(path string, force bool) {
 	cleanRelDir := filepath.Join(cleanRelParts...)
 	thumbSubPath := filepath.Join(cleanRelDir, cleanFilename)
 
-	localThumbDir := filepath.Join(o.cfg.Application.Storage.Local, "thumbnails", thumbSubPath)
+	localThumbDir := filepath.Join(o.cfg.Application.Storage.Thumbnails, thumbSubPath)
 	os.MkdirAll(localThumbDir, 0755)
 
 	// Create thumbnails on local SSD
-	pngFiles, err := pptx.ExtractSlidesToPNG(processPath, localThumbDir)
+	pngFiles, err := pptx.ExtractSlidesToPNG(processPath, localThumbDir, o.cfg.Application.Storage.Temp)
 	if err != nil {
 		o.log("Failed to extract thumbnails from %s: %v", filename, err)
 	}
@@ -474,7 +468,7 @@ func (o *Observer) ProcessFile(path string, force bool) {
 		err = database.SaveSlide(o.db, &database.Slide{
 			PPTXFileID: fileID,
 			SlideNum:   slideNum,
-			PNGPath:    filepath.ToSlash(filepath.Join("thumbnails", thumbSubPath, relPNGPath)),
+			PNGPath:    filepath.ToSlash(filepath.Join(thumbSubPath, relPNGPath)),
 			Content:    content,
 			StyleInfo:  styleJSON,
 			AIAnalysis: []byte("{}"),

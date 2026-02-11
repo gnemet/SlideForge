@@ -16,12 +16,15 @@ import (
 )
 
 // ExtractSlidesToPNG converts a PPTX file to a series of PNG images using LibreOffice and pdftoppm.
-func ExtractSlidesToPNG(pptxPath, outputDir string) ([]string, error) {
+func ExtractSlidesToPNG(pptxPath, outputDir, tempDir string) ([]string, error) {
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create output dir: %v", err)
 	}
 
-	tempPDFDir := filepath.Join("temp", "pdf")
+	if tempDir == "" {
+		tempDir = "temp"
+	}
+	tempPDFDir := filepath.Join(tempDir, "pdf")
 	if err := os.MkdirAll(tempPDFDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create temp pdf dir: %v", err)
 	}
@@ -156,8 +159,9 @@ type JSONSlide struct {
 }
 
 type Shape struct {
-	Type string    `json:"type"` // title | body | other
-	Runs []TextRun `json:"runs"`
+	Index int       `json:"index"`
+	Type  string    `json:"type"` // title | body | other
+	Runs  []TextRun `json:"runs"`
 }
 
 type TextRun struct {
@@ -484,7 +488,8 @@ func parseSlideXML(r io.Reader, index int) (*JSONSlide, string, error) {
 
 			case "sp": // shape
 				currentShape = &Shape{
-					Type: normalizePlaceholder(placeholderType),
+					Index: len(slide.Shapes),
+					Type:  normalizePlaceholder(placeholderType),
 				}
 
 			case "r": // text run
@@ -568,4 +573,128 @@ func normalizePlaceholder(ph string) string {
 	default:
 		return "other"
 	}
+}
+
+// UpdateSlideText modifies the text of a specific shape in a slide XML within the PPTX zip.
+func UpdateSlideText(pptxPath string, slideNum int, shapeIdx int, newText string) error {
+	// Create a temporary file for the new PPTX
+	tmpPath := pptxPath + ".tmp"
+
+	r, err := zip.OpenReader(pptxPath)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	wfile, err := os.Create(tmpPath)
+	if err != nil {
+		return err
+	}
+	defer wfile.Close()
+
+	zw := zip.NewWriter(wfile)
+	defer zw.Close()
+
+	slideFile := fmt.Sprintf("ppt/slides/slide%d.xml", slideNum)
+	found := false
+
+	for _, f := range r.File {
+		w, err := zw.Create(f.Name)
+		if err != nil {
+			return err
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+
+		if f.Name == slideFile {
+			found = true
+			content, err := io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				return err
+			}
+
+			updatedContent, err := replaceShapeText(content, shapeIdx, newText)
+			if err != nil {
+				return err
+			}
+			_, err = w.Write(updatedContent)
+		} else {
+			_, err = io.Copy(w, rc)
+			rc.Close()
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("slide %d not found in pptx", slideNum)
+	}
+
+	// Close wrappers before renaming
+	zw.Close()
+	wfile.Close()
+	r.Close()
+
+	return os.Rename(tmpPath, pptxPath)
+}
+
+// replaceShapeText is a heavy-duty XML manipulator that finds the N-th <p:sp> and replaces its text runs.
+func replaceShapeText(content []byte, shapeIdx int, newText string) ([]byte, error) {
+	// Use regex or minimal XML parsing to find the shape and replace its text runs.
+	// PPTX text is inside <a:t> tags within <a:p> tags in <p:sp>.
+	// This is a naive implementation: it finds all <p:sp> blocks and identifies the one at shapeIdx.
+
+	spRegex := regexp.MustCompile(`(?s)<p:sp>.*?</p:sp>`)
+	matches := spRegex.FindAllIndex(content, -1)
+
+	if shapeIdx < 0 || shapeIdx >= len(matches) {
+		return nil, fmt.Errorf("shape index %d out of range (found %d shapes)", shapeIdx, len(matches))
+	}
+
+	match := matches[shapeIdx]
+	shapeXml := content[match[0]:match[1]]
+
+	// Within the shape, we want to replace the content of text boxes.
+	// A simple way is to find all <a:p> (paragraphs) and replace them with a single paragraph
+	// containing the new text.
+
+	txBodyRegex := regexp.MustCompile(`(?s)<p:txBody>.*?</p:txBody>`)
+	txBodyMatch := txBodyRegex.FindStringIndex(string(shapeXml))
+	if txBodyMatch == nil {
+		return nil, fmt.Errorf("shape %d has no text body", shapeIdx)
+	}
+
+	// Create a new txBody content. We preserve the original body properties if possible,
+	// but for simplicity, we'll try to keep it minimal.
+	// Actually, replacing just the <a:t> content while keeping the structure is safer.
+	// But if there are multiple runs, it's messy.
+
+	// Better: remove all <a:r> (runs) and <a:fld> and replace with one <a:r> containing <a:t>.
+	// We'll keep the <a:pPr> (paragraph properties) if it exists.
+
+	// We'll replace the first paragraph's runs and remove other paragraphs?
+	// Or just replace all text in all paragraphs with the new text in the first one.
+
+	newParagraph := fmt.Sprintf(`<a:p><a:r><a:t>%s</a:t></a:r></a:p>`, escapeXML(newText))
+
+	// This is a very destructive but effective replacement for simple text overrides.
+	newTxBody := txBodyRegex.ReplaceAllString(string(shapeXml), `<p:txBody><a:bodyPr/><a:lstStyle/>`+newParagraph+`</p:txBody>`)
+
+	// Reassemble the full content
+	result := append([]byte{}, content[:match[0]]...)
+	result = append(result, []byte(newTxBody)...)
+	result = append(result, content[match[1]:]...)
+
+	return result, nil
+}
+
+func escapeXML(s string) string {
+	var b strings.Builder
+	xml.EscapeText(&b, []byte(s))
+	return b.String()
 }

@@ -1,0 +1,212 @@
+{{ define "partials/comment_slide_detail.html" }}
+<div class="slide-detail-content animate-fade-in" id="slide-detail-{{ .SlideNum }}">
+    <div class="row">
+        <!-- Slide Preview and Placeholders -->
+        <div class="col-md-6">
+            <div class="card bg-darker border-accent mb-3">
+                <div class="card-header bg-accent text-dark d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Slide {{ .SlideNum }} Preview</h5>
+                    <span class="badge bg-dark text-accent">ID: {{ .FileID }}</span>
+                </div>
+                <div class="card-body p-2">
+                    <img src="/thumbnails/{{ stripExt .Filename }}/slide-{{ printf "%04d" .SlideNum }}.png"
+                         class="img-fluid rounded border border-secondary"
+                         onerror="this.src='/static/images/slide-placeholder.png'; this.onerror=null;">
+                </div>
+            </div>
+
+            <div class="card bg-darker border-accent">
+                <div class="card-header bg-dark text-accent d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Interactive Slide Text</h5>
+                    <button class="btn btn-sm btn-outline-accent" onclick="window.insertGlobalPlaceholder()">
+                        <i class="fas fa-plus"></i> {{ "{{" }}1{{ "}}" }}
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="placeholder-preview scrollbar-thin" style="max-height: 400px; overflow-y: auto;">
+                        {{ if .SelectedSlide.Styles }}
+                            {{ range .SelectedSlide.Styles.Shapes }}
+                            <div class="shape-item mb-3 bg-dark p-2 rounded border border-muted focus-within-accent position-relative">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge bg-secondary opacity-50" style="font-size: 0.7rem;">{{ .Type }} #{{ .Index }}</span>
+                                    <div id="status-shape-{{ .Index }}" class="save-status badge bg-success opacity-0 transition-all">Updated</div>
+                                </div>
+                                <div contenteditable="true" 
+                                     class="shape-text text-light scrollbar-thin"
+                                     data-shape-idx="{{ .Index }}"
+                                     id="editable-shape-{{ .Index }}"
+                                     style="outline: none; min-height: 1.5rem; white-space: pre-wrap; font-size: 0.9rem;">
+                                    {{ range .Runs }}{{ .Text }}{{ end }}
+                                </div>
+                                
+                                <form hx-post="/editor/save-slide-text" 
+                                      hx-trigger="save-shape-{{ .Index }}"
+                                      hx-target="#status-shape-{{ .Index }}"
+                                      hx-swap="innerHTML"
+                                      class="hidden">
+                                    <input type="hidden" name="fileID" value="{{ $.FileID }}">
+                                    <input type="hidden" name="slideNum" value="{{ $.SlideNum }}">
+                                    <input type="hidden" name="shapeIdx" value="{{ .Index }}">
+                                    <input type="hidden" name="text" id="input-shape-{{ .Index }}">
+                                </form>
+                                
+                                <div class="shape-actions mt-1 d-flex gap-1">
+                                    <button class="btn btn-xs btn-outline-secondary" style="font-size: 0.6rem; padding: 1px 4px;" 
+                                            onclick="window.insertPlaceholderAt('editable-shape-{{ .Index }}')">
+                                        +{{ "{{" }}1{{ "}}" }}
+                                    </button>
+                                </div>
+                            </div>
+                            {{ end }}
+                        {{ else }}
+                            <div class="slide-text-highlight text-muted" style="white-space: pre-wrap; font-size: 0.9rem; line-height: 1.6;">
+                                {{ .SelectedSlide.Text }}
+                            </div>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comments and Editor -->
+        <div class="col-md-6">
+            <h4 class="text-accent mb-3 d-flex align-items-center">
+                <i class="fas fa-comments mr-2"></i> Slide Comments
+            </h4>
+            
+            {{ if .SelectedSlide.Comments }}
+            <div class="comments-list">
+                {{ range $idx, $comment := .SelectedSlide.Comments }}
+                {{ $key := printf "%d_%d" $.SlideNum $idx }}
+                <div class="comment-item mb-4 animate-slide-up" style="animation-delay: {{ mul $idx 100 }}ms">
+                    <div class="comment-meta d-flex justify-content-between mb-2">
+                        <span class="text-muted small">
+                            <i class="fas fa-user-circle"></i> <strong>{{ .Author }}</strong>
+                        </span>
+                        <div id="status-{{ $key }}" class="save-status badge bg-success opacity-0 transition-all">Saved</div>
+                    </div>
+                    
+                    <div class="original-quote border-left border-accent pl-3 mb-3 text-muted italic" style="font-size: 0.85rem;">
+                        "{{ .Text }}"
+                    </div>
+
+                    <div class="wysiwyg-wrapper bg-dark rounded border border-muted focus-within-accent transition-all">
+                        <div id="editor-{{ $key }}" class="quill-editor" style="height: 150px; color: white;">{{ index $.Overrides $key }}</div>
+                        <form hx-post="/editor/save" hx-trigger="save-{{ $key }}" hx-target="#status-{{ $key }}" hx-swap="innerHTML">
+                            <input type="hidden" name="fileID" value="{{ $.FileID }}">
+                            <input type="hidden" name="slideNum" value="{{ $.SlideNum }}">
+                            <input type="hidden" name="commentIdx" value="{{ $idx }}">
+                            <input type="hidden" name="text" id="input-{{ $key }}">
+                        </form>
+                    </div>
+                </div>
+                {{ end }}
+            </div>
+            {{ end }}
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const toolbarOptions = [
+            ['bold', 'italic', 'underline'],
+            [{ 'color': [] }, { 'background': [] }],
+            ['clean']
+        ];
+
+        {{ range $idx, $comment := .SelectedSlide.Comments }}
+        {{ $key := printf "%d_%d" $.SlideNum $idx }}
+        (function() {
+            const quill = new Quill('#editor-{{ $key }}', {
+                theme: 'snow',
+                modules: { toolbar: toolbarOptions }
+            });
+
+            let timeout = null;
+            quill.on('text-change', function() {
+                const content = quill.root.innerHTML;
+                document.getElementById('input-{{ $key }}').value = content;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    htmx.trigger(document.querySelector('[hx-trigger="save-{{ $key }}"]'), 'save-{{ $key }}');
+                    const status = document.getElementById('status-{{ $key }}');
+                    status.classList.remove('opacity-0');
+                    setTimeout(() => status.classList.add('opacity-0'), 2000);
+                }, 1000);
+            });
+            document.getElementById('input-{{ $key }}').value = quill.root.innerHTML;
+        })();
+        {{ end }}
+
+        window.insertPlaceholderAt = function(elementId) {
+            const el = document.getElementById(elementId);
+            el.focus();
+            
+            const allText = Array.from(document.querySelectorAll('.shape-text')).map(e => e.innerText).join(' ');
+            const matches = allText.match(/\{\{(\d+)\}\}/g) || [];
+            let max = 0;
+            matches.forEach(m => {
+                const n = parseInt(m.match(/\d+/)[0]);
+                if (n > max) max = n;
+            });
+            const nextPh = '{{ "{{" }}' + (max + 1) + '{{ "}}" }}';
+
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                range.insertNode(document.createTextNode(nextPh));
+                range.setStartAfter(range.endContainer);
+                range.collapse(true);
+            } else {
+                el.innerText += nextPh;
+            }
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        };
+
+        window.insertGlobalPlaceholder = function() {
+            const firstShape = document.querySelector('.shape-text');
+            if (firstShape) {
+                window.insertPlaceholderAt(firstShape.id);
+            }
+        };
+
+        document.querySelectorAll('.shape-text').forEach(el => {
+            let timeout = null;
+            const idx = el.getAttribute('data-shape-idx');
+
+            el.addEventListener('input', () => {
+                const content = el.innerText;
+                document.getElementById('input-shape-' + idx).value = content;
+                
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    htmx.trigger(document.querySelector('[hx-trigger="save-shape-' + idx + '"]'), 'save-shape-' + idx);
+                    const status = document.getElementById('status-shape-' + idx);
+                    status.classList.remove('opacity-0');
+                    setTimeout(() => status.classList.add('opacity-0'), 2000);
+                }, 1500);
+            });
+        });
+    })();
+</script>
+
+<style>
+    .bg-darker { background: rgba(0,0,0,0.4); }
+    .border-accent { border-color: var(--accent) !important; }
+    .focus-within-accent:focus-within { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2); }
+    .transition-all { transition: all 0.3s ease; }
+    .opacity-0 { opacity: 0; }
+    .btn-xs { padding: 1px 5px; font-size: 0.75rem; border-radius: 3px; }
+    
+    .ql-toolbar.ql-snow { border: none; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.05); }
+    .ql-container.ql-snow { border: none; }
+    .ql-snow .ql-stroke { stroke: rgba(255,255,255,0.7); }
+    .ql-snow .ql-fill { fill: rgba(255,255,255,0.7); }
+    .ql-snow .ql-picker { color: rgba(255,255,255,0.7); }
+    
+    .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+{{ end }}
