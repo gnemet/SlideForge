@@ -13,6 +13,10 @@
             <i class="fas fa-magic"></i>
             <span>{{T .Lang `generator` }}</span>
         </a>
+        <a href="/detector" class="nav-item {{if eq .ActiveNav " detector"}}active{{end}}">
+            <i class="fas fa-search-plus"></i>
+            <span>{{T .Lang `detector` }}</span>
+        </a>
         <a href="/meta" class="nav-item {{if eq .ActiveNav " tables"}}active{{end}}">
             <i class="fas fa-database"></i>
             <span>{{T .Lang `tables` }}</span>

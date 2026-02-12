@@ -3,7 +3,7 @@ application:
   version: "0.2.0"
   last_build: "2026-02-03 08:15 CET"
   host: "localhost"
-  port: 8088
+  port: 8087
   author: "Gabor Nemet"
   copyright: "2026"
   engine: "Antigravity Engine"

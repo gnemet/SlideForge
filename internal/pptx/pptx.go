@@ -693,6 +693,65 @@ func replaceShapeText(content []byte, shapeIdx int, newText string) ([]byte, err
 	return result, nil
 }
 
+// ReplacePlaceholders modifies the text of all occurrences of {{key}} with the provided value in a PPTX file.
+func ReplacePlaceholders(srcPath, dstPath string, mapping map[string]string) error {
+	r, err := zip.OpenReader(srcPath)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	out, err := os.Create(dstPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	zw := zip.NewWriter(out)
+	defer zw.Close()
+
+	for _, f := range r.File {
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+
+		header := f.FileHeader
+		w, err := zw.CreateHeader(&header)
+		if err != nil {
+			rc.Close()
+			return err
+		}
+
+		if strings.HasPrefix(f.Name, "ppt/slides/slide") && strings.HasSuffix(f.Name, ".xml") {
+			content, err := io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				return err
+			}
+
+			// Perform replacements
+			sContent := string(content)
+			for k, v := range mapping {
+				placeholder := fmt.Sprintf("{{%s}}", k)
+				sContent = strings.ReplaceAll(sContent, placeholder, escapeXML(v))
+			}
+
+			if _, err := w.Write([]byte(sContent)); err != nil {
+				return err
+			}
+		} else {
+			if _, err := io.Copy(w, rc); err != nil {
+				rc.Close()
+				return err
+			}
+			rc.Close()
+		}
+	}
+
+	return nil
+}
+
 func escapeXML(s string) string {
 	var b strings.Builder
 	xml.EscapeText(&b, []byte(s))

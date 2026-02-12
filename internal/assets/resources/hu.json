@@ -87,5 +87,14 @@
     "marketing_desc": "A SlideForge nem csak tárolja a fájlokat; érti is őket. Motorunk kinyeri a prezentációkban rejlő rejtett értéket, kereshetővé, újrafelhasználhatóvá és cselekvőképessé téve a szervezeti tudást.",
     "built_with": "Szenvedéllyel készítették a Digital Blacksmiths csapat tagjai.",
     "ai_tester": "MI Tesztelő",
-    "toggle_sidebar": "Oldalsáv váltása"
+    "toggle_sidebar": "Oldalsáv váltása",
+    "detector": "Felfedezés",
+    "mapping_pane": "Felfedezési Leképezés",
+    "placeholder_text": "Helyőrző Szövege",
+    "metadata_key": "Metaadat Kulcs",
+    "save_mapping": "Leképezés Mentése",
+    "discovered_list": "Felfedezett Leképezések",
+    "no_mappings_yet": "Még nincs leképezés.",
+    "copy_text_instruction": "Válasszon ki szöveget a kulcsok értékeinek másolásához",
+    "slide_label": "Dia"
 }

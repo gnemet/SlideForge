@@ -87,5 +87,14 @@
     "marketing_desc": "SlideForge doesn't just store files; it understands them. Our engine extracts the hidden value in your presentations, making your organizational knowledge searchable, reusable, and actionable.",
     "built_with": "Built with passion by the Digitial Blacksmiths team.",
     "ai_tester": "AI Tester",
-    "toggle_sidebar": "Toggle Sidebar"
+    "toggle_sidebar": "Toggle Sidebar",
+    "detector": "Discovery",
+    "mapping_pane": "Discovery Mapping",
+    "placeholder_text": "Placeholder Text",
+    "metadata_key": "Metadata Key",
+    "save_mapping": "Save Mapping",
+    "discovered_list": "Discovered Mappings",
+    "no_mappings_yet": "No mappings yet.",
+    "copy_text_instruction": "Select text to copy values for keys",
+    "slide_label": "Slide"
 }

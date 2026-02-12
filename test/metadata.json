@@ -1,0 +1,10 @@
+{
+    "client_name": "Acme Corp",
+    "project_name": "Project Roadrunner",
+    "target_company": "Wile E. Kft.",
+    "audit_period": "2023-2024",
+    "total_fee": "12500",
+    "currency": "EUR",
+    "delivery_days": "14",
+    "lead_partner": "Burján Ákos"
+}

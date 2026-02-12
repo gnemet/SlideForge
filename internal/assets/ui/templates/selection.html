@@ -13,7 +13,7 @@
 <div class="pptx-grid" id="slide-selection-grid">
     <!-- Slides will be loaded here -->
     {{ range .slides }}
-    <div class="pptx-card slide-card"
+    <div class="pptx-card slide-card" data-id="{{ $.FileID }}" data-filename="{{ $.Filename }}"
         onclick="$(this).toggleClass('selected'); $(this).find('input').prop('checked', $(this).hasClass('selected'))">
         <input type="checkbox" name="selectedSlides" value="{{ .SlideNum }}" style="display: none;">
         <div class="thumbnail">

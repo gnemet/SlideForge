@@ -1,0 +1,190 @@
+{{template "base" .}}
+{{define "extra_css"}}
+<link rel="stylesheet" href="/static/css/generator.css">
+<style>
+    .detector-container {
+        display: flex;
+        gap: 24px;
+        height: calc(100vh - 120px);
+        overflow: hidden;
+    }
+
+    .mapping-form {
+        padding: 24px;
+        background: var(--bg-color);
+        border-radius: 8px;
+        margin: 16px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-muted);
+    }
+
+    .discovery-list {
+        margin-top: 32px;
+        border-top: 1px solid var(--border-color);
+        padding-top: 20px;
+        margin-bottom: 40px;
+    }
+
+    .discovery-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 4px;
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+    }
+
+    [data-theme="dark"] .discovery-item {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Input with icon styling */
+    .input-icon-wrapper {
+        position: relative;
+    }
+
+    .input-icon-wrapper i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+
+    .input-icon-wrapper .search-input {
+        padding-left: 36px;
+    }
+
+    .slide-preview-large {
+        padding: 16px 24px;
+        text-align: center;
+        margin-bottom: 24px;
+    }
+
+    .slide-preview-large img {
+        max-width: 100%;
+        border-radius: 8px;
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border-color);
+        max-height: 240px;
+    }
+
+    /* Indicator dot in tree */
+    .has-discovery .slide-info::before {
+        content: '';
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: #2ecc71;
+        border-radius: 50%;
+        margin-right: 6px;
+        box-shadow: 0 0 5px rgba(46, 204, 113, 0.5);
+    }
+</style>
+{{end}}
+
+{{define "content"}}
+<div class="detector-container">
+    <!-- Tree Pane (Selection) - LEFT -->
+    <div class="pane">
+        <div class="pane-header">
+            <h3>{{T .Lang "available_slides"}}</h3>
+            <div class="input-icon-wrapper">
+                <i class="fas fa-search"></i>
+                <input type="text" id="ppt-search" class="search-input" style="width: 180px;"
+                    placeholder='{{T .Lang "filter_presentations"}}...'>
+            </div>
+        </div>
+        <div class="tree-view" id="source-tree">
+            {{template "file_tree_node.html" dict "Node" .FileTree "Lang" .Lang}}
+        </div>
+    </div>
+
+    <!-- Mapping Pane - RIGHT -->
+    <div class="pane" id="mapping-pane">
+        <div class="pane-header">
+            <h3>{{T .Lang "mapping_pane"}}</h3>
+        </div>
+        <div class="mapping-content" style="flex: 1; overflow-y: auto;">
+            <div id="no-slide-selected" class="collection-empty">
+                <i class="fas fa-mouse-pointer opacity-50 mb-16" style="font-size: 2rem;"></i>
+                <p>{{T .Lang "drag_slides_here"}}</p>
+            </div>
+
+            <div id="mapping-form-container" style="display: none;">
+                <form id="discovery-form" hx-post="/detector/save" hx-target="#save-status" hx-swap="innerHTML"
+                    class="mapping-form">
+                    <div id="selection-info" class="selected-indicator"></div>
+
+                    <input type="hidden" name="fileID" id="form-file-id">
+                    <input type="hidden" name="slideNum" id="form-slide-num">
+
+                    <div class="form-group input-icon-wrapper">
+                        <i class="fas fa-quote-left"></i>
+                        <input type="text" name="placeholder" class="search-input"
+                            placeholder='{{T .Lang "placeholder_text"}} (e.g. [CLIENT])' required
+                            title='{{T .Lang "placeholder_text"}}'>
+                    </div>
+
+                    <div class="form-group input-icon-wrapper">
+                        <i class="fas fa-tag"></i>
+                        <input type="text" name="key" class="search-input"
+                            placeholder='{{T .Lang "metadata_key"}} (e.g. client_name)' required
+                            title='{{T .Lang "metadata_key"}}'>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-full" title='{{T .Lang "save_mapping"}}'>
+                        <i class="fas fa-save"></i>
+                    </button>
+
+                    <div id="save-status" class="mt-8 text-center" style="font-size: 0.85rem;"></div>
+                </form>
+
+                <!-- Thumbnail Preview (Under Form) -->
+                <div class="slide-preview-large">
+                    <img id="large-preview-img" src="" alt="Slide Preview">
+                </div>
+
+                <!-- Copyable Slide Text -->
+                <div class="px-24 mb-24">
+                    <h4 class="mb-8" style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">
+                        <i class="fas fa-file-alt mr-8"></i> {{T .Lang "raw_content_label"}}
+                    </h4>
+                    <textarea id="slide-text-content" readonly class="search-input"
+                        style="width: 100%; height: 120px; font-size: 0.8rem; font-family: monospace; cursor: text;"></textarea>
+                    <small class="text-muted mt-4 block" style="font-size: 0.75rem;">({{T .Lang
+                        "copy_text_instruction"}})</small>
+                </div>
+
+                <div class="discovery-list" id="discovered-mappings"
+                    data-label-no-mappings='{{T .Lang "no_mappings_yet"}}' data-label-slide='{{T .Lang "slide_label"}}'>
+                    <h4 class="px-24 mb-12">{{T .Lang "discovered_list"}}</h4>
+                    <div id="discovery-items" class="px-24">
+                        <!-- Items injected here via JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script id="discovered-data" type="application/json">
+    {{ .Discovered }}
+</script>
+{{end}}
+
+{{define "extra_js"}}
+<script src="/static/js/detector.js"></script>
+{{end}}

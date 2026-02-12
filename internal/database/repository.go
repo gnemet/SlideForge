@@ -188,3 +188,40 @@ func GetTotalAICost(db *sql.DB) (float64, error) {
 	err := db.QueryRow("SELECT COALESCE(SUM(cost), 0) FROM ai_usage").Scan(&total)
 	return total, err
 }
+
+type DiscoveredPlaceholder struct {
+	ID              int       `json:"id"`
+	PPTXFileID      int       `json:"pptx_file_id"`
+	SlideNumber     int       `json:"slide_number"`
+	PlaceholderText string    `json:"placeholder_text"`
+	MetadataKey     string    `json:"metadata_key"`
+	DiscoveredAt    time.Time `json:"discovered_at"`
+}
+
+func SaveDiscoveredPlaceholder(db *sql.DB, dp *DiscoveredPlaceholder) error {
+	query := `
+		INSERT INTO placeholder_discovery (pptx_file_id, slide_number, placeholder_text, metadata_key)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (pptx_file_id, slide_number, placeholder_text) DO UPDATE SET metadata_key = $4
+	`
+	_, err := db.Exec(query, dp.PPTXFileID, dp.SlideNumber, dp.PlaceholderText, dp.MetadataKey)
+	return err
+}
+
+func GetDiscoveredPlaceholders(db *sql.DB) ([]DiscoveredPlaceholder, error) {
+	rows, err := db.Query("SELECT id, pptx_file_id, slide_number, placeholder_text, metadata_key, discovered_at FROM placeholder_discovery ORDER BY discovered_at DESC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []DiscoveredPlaceholder
+	for rows.Next() {
+		var dp DiscoveredPlaceholder
+		if err := rows.Scan(&dp.ID, &dp.PPTXFileID, &dp.SlideNumber, &dp.PlaceholderText, &dp.MetadataKey, &dp.DiscoveredAt); err != nil {
+			return nil, err
+		}
+		results = append(results, dp)
+	}
+	return results, nil
+}

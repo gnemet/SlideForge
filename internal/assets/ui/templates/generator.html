@@ -33,7 +33,7 @@
             </div>
         </div>
         <div class="tree-view" id="source-tree">
-            {{template "file_tree_node" dict "Node" .FileTree "Lang" .Lang}}
+            {{template "file_tree_node.html" dict "Node" .FileTree "Lang" .Lang}}
         </div>
     </div>
 
@@ -126,41 +126,7 @@
 </div>
 {{end}}
 
-{{define "file_tree_node"}}
-{{$lang := .Lang}}
-{{range $name, $node := .Node.Children}}
-<div class="tree-folder">
-    <div class="folder-header" onclick="toggleFolder(this, event)">
-        <i class="fas fa-chevron-right chevron"></i>
-        <i class="fas fa-folder text-accent"></i>
-        <span>{{$name}}</span>
-    </div>
-    <div class="folder-content" style="display: none; padding-left: 20px;">
-        {{template "file_tree_node" dict "Node" $node "Lang" $lang}}
-    </div>
-</div>
-{{end}}
-{{range .Node.Files}}
-<div class="tree-node" data-filename="{{ stripExt .Filename }}" data-tags="{{.Metadata}}">
-    <div class="ppt-node" onclick="toggleNode(this, event)" draggable="true" data-type="pptx" data-id="{{.ID}}">
-        <i class="fas fa-chevron-right chevron"></i>
-        <i class="fas fa-file-powerpoint text-accent"></i>
-        <span>{{ if .Title }}{{ .Title }}{{ else }}{{ stripExt .Filename }}{{ end }}</span>
-    </div>
-    <div class="slides-container" id="slides-{{.ID}}">
-        {{range .Slides}}
-        <div class="slide-item" draggable="true" data-id="{{.ID}}" data-path="/thumbnails/{{.PNGPath}}"
-            data-summary="{{.AISummary}}" data-content="{{.Content}}" onclick="handleSlideClick(this, event)">
-            <img src="/thumbnails/{{.PNGPath}}" class="slide-thumb-small">
-            <div class="slide-info">
-                <span>{{ if .Title }}{{ .Title }}{{ else }}{{T $lang "slide_num"}} {{ .SlideNum }}{{ end
-                    }}</span>
-            </div>
-        </div>
-        {{end}}
-    </div>
-</div>
-{{end}}
+
 {{end}}
 
 {{define "extra_js"}}

@@ -166,6 +166,8 @@ func main() {
 	http.HandleFunc("/collect", AuthMiddleware(handleCollect))
 	http.HandleFunc("/analyze", AuthMiddleware(handleAnalyze))
 	http.HandleFunc("/generator", AuthMiddleware(handleGenerator))
+	http.HandleFunc("/detector", AuthMiddleware(handleDetector))
+	http.HandleFunc("/detector/save", AuthMiddleware(handleSaveDiscovery))
 	http.HandleFunc("/about", AuthMiddleware(handleAbout))
 	http.HandleFunc("/ai-tester", AuthMiddleware(handleAITester))
 	http.HandleFunc("/ai-tester/chat", AuthMiddleware(handleAIChat))
@@ -900,6 +902,7 @@ func handleSelection(w http.ResponseWriter, r *http.Request) {
 	data := getBaseData(r, pptxTitle, "dashboard")
 	data["slides"] = slides
 	data["FileID"] = fileID
+	data["Filename"] = filename
 
 	// Fetch PPTX summary
 	var pptxSummary string
@@ -1033,6 +1036,58 @@ func handleGenerator(w http.ResponseWriter, r *http.Request) {
 	data["Files"] = files
 	data["FileTree"] = tree
 	renderTemplate(w, "generator.html", data)
+}
+
+func handleDetector(w http.ResponseWriter, r *http.Request) {
+	files, err := database.GetAllPPTXWithSlides(sqlDB)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tree := buildFileTree(files)
+	discovered, _ := database.GetDiscoveredPlaceholders(sqlDB)
+	discoveredJSON, _ := json.Marshal(discovered)
+
+	data := getBaseData(r, "Placeholder Detector", "detector")
+	data["Files"] = files
+	data["FileTree"] = tree
+	data["Discovered"] = template.HTML(discoveredJSON)
+	renderTemplate(w, "detector.html", data)
+}
+
+func handleSaveDiscovery(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	fileID, _ := strconv.Atoi(r.FormValue("fileID"))
+	slideNum, _ := strconv.Atoi(r.FormValue("slideNum"))
+	placeholder := r.FormValue("placeholder")
+	key := r.FormValue("key")
+
+	if fileID == 0 || slideNum == 0 || placeholder == "" || key == "" {
+		http.Error(w, "Missing fields", http.StatusBadRequest)
+		return
+	}
+
+	dp := &database.DiscoveredPlaceholder{
+		PPTXFileID:      fileID,
+		SlideNumber:     slideNum,
+		PlaceholderText: placeholder,
+		MetadataKey:     key,
+	}
+
+	err := database.SaveDiscoveredPlaceholder(sqlDB, dp)
+	if err != nil {
+		log.Printf("DB Error saving discovery: %v", err)
+		w.Header().Set("HX-Trigger", "discoveryError")
+		w.Write([]byte("Error saving"))
+	} else {
+		w.Header().Set("HX-Trigger", "discoverySaved")
+		w.Write([]byte("Saved successfully"))
+	}
 }
 
 func handleAbout(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,21 @@
+# Tasks
+
+- [ ] Initial setup and exploration [/]
+    - [x] Create directories
+    - [x] List source files
+    - [x] Create implementation plan
+- [x] Process source PPTX files
+    - [x] Unzip files to `unpack` directory
+    - [x] Analyze unpacked contents
+- [x] Create Seed PPTX
+    - [x] Create one empty seed pptx in `seed` directory
+- [x] Documentation and Skills
+    - [x] Create MCP/knowledge/skill on PPTX creation via seed
+- [x] Metadata and Generation
+    - [x] Create test metadata in `metadata` directory
+    - [x] Create Python script to generate new PPTX from seed and metadata
+    - [x] Generate output PPTX in `output` directory
+- [x] Verification
+    - [x] Check output with LibreOffice
+- [x] Finalize
+    - [x] Save task into project

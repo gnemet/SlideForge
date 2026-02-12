@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="c6eed51d-1529-4bce-ae09-6dc9d96e6090" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.agent/Rules/antigravity.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.agent/Rules/go-backend.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.agent/Rules/pg.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.agent/Rules/ui-ux.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmd/server/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/server/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/assets/resources/en.json" beforeDir="false" afterPath="$PROJECT_DIR$/internal/assets/resources/en.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/assets/resources/hu.json" beforeDir="false" afterPath="$PROJECT_DIR$/internal/assets/resources/hu.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/assets/ui/templates/generator.html" beforeDir="false" afterPath="$PROJECT_DIR$/internal/assets/ui/templates/generator.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/assets/ui/templates/layout/sidebar.html" beforeDir="false" afterPath="$PROJECT_DIR$/internal/assets/ui/templates/layout/sidebar.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/assets/ui/templates/selection.html" beforeDir="false" afterPath="$PROJECT_DIR$/internal/assets/ui/templates/selection.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/database/repository.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/database/repository.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/internal/pptx/pptx.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/pptx/pptx.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/regenerate_thumbnails.go" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 2
+}]]></component>
+  <component name="ProjectId" id="39X5o5yU5TlvZoRzogXizY6VGOr" />
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "database.data.extractors.current.export.id": "Markdown-Groovy.md.groovy",
+    "database.data.extractors.current.id": "Markdown-Groovy.md.groovy",
+    "git-widget-placeholder": "feature/ai-chat-tester",
+    "last_opened_file_path": "/home/gnemet/GitHub/SlideForge"
+  }
+}]]></component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="c6eed51d-1529-4bce-ae09-6dc9d96e6090" name="Changes" comment="" />
+      <created>1770829749665</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1770829749665</updated>
+    </task>
+    <servers />
+  </component>
+</project>
