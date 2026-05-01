@@ -5,20 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c6eed51d-1529-4bce-ae09-6dc9d96e6090" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.agent/Rules/antigravity.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.agent/Rules/go-backend.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.agent/Rules/pg.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.agent/Rules/ui-ux.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/server/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/server/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/config.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/assets/resources/en.json" beforeDir="false" afterPath="$PROJECT_DIR$/internal/assets/resources/en.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/assets/resources/hu.json" beforeDir="false" afterPath="$PROJECT_DIR$/internal/assets/resources/hu.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/assets/ui/templates/generator.html" beforeDir="false" afterPath="$PROJECT_DIR$/internal/assets/ui/templates/generator.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/assets/ui/templates/layout/sidebar.html" beforeDir="false" afterPath="$PROJECT_DIR$/internal/assets/ui/templates/layout/sidebar.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/assets/ui/templates/selection.html" beforeDir="false" afterPath="$PROJECT_DIR$/internal/assets/ui/templates/selection.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/database/repository.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/database/repository.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal/pptx/pptx.go" beforeDir="false" afterPath="$PROJECT_DIR$/internal/pptx/pptx.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/regenerate_thumbnails.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/SlideForge.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/SlideForge.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/db-forest-config.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/db-forest-config.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,21 +18,25 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 2
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
   <component name="ProjectId" id="39X5o5yU5TlvZoRzogXizY6VGOr" />
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "database.data.extractors.current.export.id": "Markdown-Groovy.md.groovy",
-    "database.data.extractors.current.id": "Markdown-Groovy.md.groovy",
-    "git-widget-placeholder": "feature/ai-chat-tester",
-    "last_opened_file_path": "/home/gnemet/GitHub/SlideForge"
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;database.data.extractors.current.export.id&quot;: &quot;Markdown-Groovy.md.groovy&quot;,
+    &quot;database.data.extractors.current.id&quot;: &quot;Markdown-Groovy.md.groovy&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;feature/ai-chat-tester&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/gnemet/GitHub/datagrid&quot;
   }
-}]]></component>
+}</component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="c6eed51d-1529-4bce-ae09-6dc9d96e6090" name="Changes" comment="" />
